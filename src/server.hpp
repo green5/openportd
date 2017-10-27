@@ -23,7 +23,7 @@ template<typename P> struct TPub : TSocket::Parent
   ~TPub()
   {
     parent->rpc.send(remote,'e',"");
-    plog("%p: in=%ld out=%ld",this,in,out);
+    plog("%p: %s in=%ld out=%ld",this,NAME(port.fd()),in,out);
   }
   string write_data;
   void flush()

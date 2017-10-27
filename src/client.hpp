@@ -15,7 +15,7 @@ template<typename P> struct TLoc : TSocket::Parent
   }
   ~TLoc()
   {
-    plog("%p: in=%ld out=%ld",this,in,out);
+    plog("%p: %s in=%ld out=%ld",this,NAME(port.fd()),in,out);
   }
   void write(const string &data)
   {
@@ -32,7 +32,7 @@ template<typename P> struct TLoc : TSocket::Parent
       parent->remove(fd);
       return;
     }
-    if(remote==0) pexit("REMORE fd=%d",NAME(fd));
+    if(remote==0) pexit("REMOTE fd=%s",NAME(fd));
     out += data.size();
     parent->rpc.send(remote,'d',data);
   }
