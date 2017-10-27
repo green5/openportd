@@ -44,6 +44,7 @@ clean:
 	rm -f openportd
 
 commit:
+	make
 	git add .
 	git commit -m "make commit"
 	git push -u origin master

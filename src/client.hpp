@@ -32,8 +32,8 @@ template<typename P> struct TLoc : TSocket::Parent
       parent->remove(fd);
       return;
     }
-    out += write_data.size();
     if(remote==0) pexit("REMORE fd=%d",NAME(fd));
+    out += data.size();
     parent->rpc.send(remote,'d',data);
   }
 };
