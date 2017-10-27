@@ -165,7 +165,10 @@ template<typename P> struct TClient : TSocket::Parent
         {
           return packet.head.remote==(int64_t)a.second;
         });
-        if(i==pub.end()) PLOG; 
+        if(i==pub.end())
+        {
+          plog("fd=%s unknown pub=%p %s",NAME(rpc.fd()),(void*)packet.head.remote,packet.C_STR());
+        }
         else if(type=='e') remove(i->second);
         else if(type=='d') i->second->write(packet.data);
         break;

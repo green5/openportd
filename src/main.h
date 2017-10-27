@@ -148,7 +148,10 @@ struct EvSocket
   EvSocket& listen(sockaddr &addr,int backlog)
   {
     int s = socket(-1,&addr);
-    if(bind(s,&addr,sizeof(addr))==-1) PEXIT;
+    if(bind(s,&addr,sizeof(addr))==-1)
+    {
+      pexit(errno,"%s",str(addr).c_str());
+    }
     socklen_t len = sizeof(addr);
     (void)getsockname(s,&addr,&len); // update addr
     dlog("listen on fd=%s",NAME(s));

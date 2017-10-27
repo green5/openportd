@@ -122,7 +122,7 @@ struct Client : TSocket::Parent
         });
         if(i==loc.end()) 
         {
-          if(type!='e') plog("fd=%s unknown remote %s",NAME(rpc.fd()),packet.C_STR());
+          if(type!='e') plog("fd=%s unknown loc=%p %s",NAME(rpc.fd()),(void*)packet.head.remote,packet.C_STR());
         }
         else if(type=='e') remove(i->second);
         else if(type=='d') i->second->write(packet.data);
