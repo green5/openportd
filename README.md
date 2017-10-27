@@ -16,7 +16,7 @@ Yet another tcp proxy
 2. Start on client:
 
     make install;
-    /usr/local/bin/openportd c.active=yes c.port=Main-Server-Ip:40001
+    /usr/local/bin/openportd c.active=yes c.port=Main-Server-Ip:40001 c.ports=22,80
 
 3. Test, Port - port allocated by server, see server or client log:
 
