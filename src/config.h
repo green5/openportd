@@ -110,7 +110,7 @@ struct Config
       {
         string key(a+2);
         char *val = strchr((char*)key.c_str(),'=');
-        if(val) *val++ = 0, key = key.c_str();
+        if(val) *val++ = 0, key = key.c_str(); else val = (char*)"yes";
         if(key=="help-config") 
         {
         }
