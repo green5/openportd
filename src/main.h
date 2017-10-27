@@ -92,6 +92,7 @@ struct EvSocket
   }
   virtual ~EvSocket()
   {
+    //plog("close %d=%s",io.fd,NAME(io.fd));
     close(io.fd);
   }
   int fd()
@@ -389,7 +390,8 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
     size_t n = TSocket::recv(fd, read_buffer);
     if(n==0)
     {
-      plog(errno,"fd=%s",NAME(fd));
+      //if(!(errno==ENOTCONN))
+      dlog(errno,"fd=%s",NAME(fd));
       //if(errno!=EINPROGRESS)
       parent->finish(__Line__);
       return;

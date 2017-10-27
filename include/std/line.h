@@ -79,7 +79,7 @@ namespace STD_H
       if(v.info==ERR_) t += "Error: ";
       t += STD_H::format("%s.%d.%s: ",v.file,v.line,v.func);
       t += STD_H::vformat(fmt,a);
-      if(v.errorSet) t += STD_H::format(" [%s]",strerror(v.errorCode));
+      if(v.errorSet) t += STD_H::format(" [%s][%d]",strerror(v.errorCode),v.errorCode);
 #ifdef MYLOG
       MYLOG(t);
 #else

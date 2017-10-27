@@ -13,12 +13,12 @@ template<typename P> struct TLoc : TSocket::Parent
     in = out = 0;
     string h = format("localhost:%d",lport); /// bind local addr to 127.0.0.2
     port.connect(h);
-    plog("%p(%p): new loc fd=%s",this,remote,NAME(port.fd()));
+    dlog("%p(%p): new loc fd=%s",this,remote,NAME(port.fd()));
   }
   ~TLoc()
   {
     //parent->rpc.send(remote,'f',"");
-    plog("%p(%p): %s in=%ld out=%ld",this,(void*)remote,NAME(port.fd()),in,out);
+    dlog("%p(%p): %s in=%ld out=%ld",this,(void*)remote,NAME(port.fd()),in,out);
   }
   void write(const string &data)
   {
@@ -44,7 +44,6 @@ template<typename P> struct TLoc : TSocket::Parent
   virtual void onread(int fd)
   {
     int n = TSocket::recv(fd, write_data);
-    out += n;
     if(n==0)
     { 
       parent->rpc.send(remote,'e',"");
@@ -55,7 +54,7 @@ template<typename P> struct TLoc : TSocket::Parent
     if(lport==80) 
     {
       done = check_http(write_data);
-      if(!done) { PLOG; return; }
+      if(!done) { plog("http continue"); return; }
     }
     flush();
     if(done)
@@ -103,13 +102,13 @@ template<typename P> struct TLoc : TSocket::Parent
     if(h["Content-Encoding"]=="gzip")
     {
       size_t nz = strtol(string(t,4).c_str(),NULL,16) + 4 + 1 + 8;
-      if(nz!=tlen) plog("nz=%d tail=%ld %s",nz,tlen,dump(data).c_str());
+      //if(nz!=tlen) plog("nz=%d tail=%ld %s",nz,tlen,dump(data).c_str());
       return nz <= tlen;
     }
     if(h["Content-Length"].size())
     {
       size_t nz = strtol(h["Content-Length"].c_str(),NULL,10);
-      if(nz!=tlen) plog("nz=%d tail=%ld %s",nz,tlen,dump(data).c_str());
+      //if(nz!=tlen) plog("nz=%d tail=%ld %s",nz,tlen,dump(data).c_str());
       return nz <= tlen;
     }
     plog("data=%ld tail=%d",data.size(),tlen);

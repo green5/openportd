@@ -16,7 +16,7 @@ template<typename P> struct TPub : TSocket::Parent
       auto c = reply.cast<Packet::c>();
       if(c.addr==0) parent->remove(this);
       remote = c.addr;
-      plog("%p(%p): remote %s",this,(void*)remote,NAME(port.fd()));
+      dlog("%p(%p): remote %s",this,(void*)remote,NAME(port.fd()));
       flush();
     });
   }
@@ -30,7 +30,7 @@ template<typename P> struct TPub : TSocket::Parent
   {
     if(!remote) // f.e. ssh
     {
-      plog("null remote fd=%s data=%ld",NAME(port.fd()),write_data.size());
+      dlog("null remote fd=%s data=%ld",NAME(port.fd()),write_data.size());
       return;
     }
     out += write_data.size();
@@ -62,7 +62,7 @@ template<typename P> struct TClient : TSocket::Parent
   public:
   P *parent;
   map<int,Pub*> pub;
-  map<int,TSocket*> list; /// to pub?
+  map<int,TSocket*> listPort; /// to pub?
   map<int,int> port2;
   Channel rpc;
   bool auth;
@@ -73,8 +73,12 @@ template<typename P> struct TClient : TSocket::Parent
   }
   ~TClient()
   {
-    PLOG;
-    for(auto l:list) delete l.second;
+    dlog("%s",NAME(rpc.fd()));
+    for(auto l:listPort) 
+    {
+      dlog("close list %d=%s",l.second->io.fd,NAME(l.second->io.fd));
+      delete l.second;
+    }
   }
   string list_start(int port) 
   {
@@ -85,7 +89,6 @@ template<typename P> struct TClient : TSocket::Parent
       pub.erase(i);        
     }
     TSocket *so = new TSocket(this);
-    list[so->fd()] = so; /// or to pub
     struct sockaddr addr = unstr(AF_INET,parent->config.get("port"));
     string config = format("%s:%d",rpc.remote('h').c_str(),port);
     const string &pref = parent->config.get(config);
@@ -96,6 +99,8 @@ template<typename P> struct TClient : TSocket::Parent
       parent->config.set(config,so->local('p'));
       parent->config.data.write();
     }
+    dlog("open list %d=%s",so->io.fd,NAME(so->io.fd));
+    listPort[so->fd()] = so;
     port2[getport(addr)] = port;
     plog("listen on %d for %d",getport(addr),port);
     return name_(so->fd());

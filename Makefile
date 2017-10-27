@@ -25,10 +25,10 @@ ss: openportd
 	$${x} ./openportd s.active=yes c.active=no --debug=$${z}
 
 c: openportd
-	$${x} ./openportd s.active=no c.active=yes --debug=$${z} c.port=mp:40001
+	$${x} ./openportd s.active=no c.active=yes --debug=$${z} c.port=localhost:40001
 
 cc: openportd
-	$${x} ./openportd s.active=no c.active=yes --debug=$${z} c.port=localhost:40001
+	$${x} ./openportd s.active=no c.active=yes --debug=$${z} c.port=mp:40001
 
 ed:
 	nano ~/.openportd.conf
