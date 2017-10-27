@@ -12,12 +12,27 @@ namespace c
   #include "client.hpp"
 }
 
+string get_ext_ip()
+{
+  char line[1024];
+  FILE *fin = popen("ip route get 8.8.8.8","r");
+  if(fgets(line,sizeof(line),fin))
+  {
+    auto t = STD_H::split(line," ");
+    if(t.size()>=7) return t[6];
+  }
+  return "0.0.0.0";
+}
+
 int DEBUG = 0;
 int DAEMON = 0;
 int SYSLOG = 0;
 
+string ext_ip;
+
 int main(int ac,char *av[])
 {
+  ext_ip = get_ext_ip();
   map_t arg;
   Config::main(ac,av,arg);
   for(auto &i:arg)
@@ -27,7 +42,7 @@ int main(int ac,char *av[])
     if(o=="help") 
     {
       plog("version %d",VERSION);
-      pexit("usage: %s [--config=path] title.key=value ... [-b] [--debug]",av[0]);
+      pexit("usage: %s [--config=path] title.key=value ... [--b] [--debug]",av[0]);
     }
     else if(o=="b") DAEMON = true;
     else if(o=="debug") DEBUG = atoi(v.c_str());

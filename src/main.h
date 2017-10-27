@@ -19,6 +19,7 @@ int getport(struct sockaddr &a);
 #define PCHAR(c) ((c<=' '||c>=127)?'.':c)
 extern int DEBUG;
 static const string null;
+extern string ext_ip;
 
 typedef std::map<string,string> map_t;
 using STD_H::format;
@@ -357,12 +358,12 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
     {
       case 'L':
       {
-        plog("L:%s",packet.data.c_str());
+        plog("%s",packet.data.c_str());
         break;
       }
       case 'E':
       {
-        plog("E:%s",packet.data.c_str());
+        perr("%s",packet.data.c_str());
         parent->finish(__Line__,"exit"); /// server?
         break;
       }

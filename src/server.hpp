@@ -80,7 +80,7 @@ template<typename P> struct TClient : TSocket::Parent
       delete l.second;
     }
   }
-  string list_start(int port) 
+  void list_start(int port) 
   {
     auto i = pub.find(port);
     if(i!=pub.end())
@@ -101,9 +101,12 @@ template<typename P> struct TClient : TSocket::Parent
     }
     dlog("open list %d=%s",so->io.fd,NAME(so->io.fd));
     listPort[so->fd()] = so;
-    port2[getport(addr)] = port;
-    plog("listen on %d for %d",getport(addr),port);
-    return name_(so->fd());
+    int aport = getport(addr);
+    port2[aport] = port;
+    string http = port==80 ? "http://" : "";
+    string log = format("listen on %s%s:%d for %d",http.c_str(),ext_ip.c_str(),aport,port);
+    plog("%s",log.c_str());
+    rpc.send('L',log);
   }
   void finish(const STD_H::Line &line,const char *cmd="none")
   {
@@ -172,10 +175,7 @@ template<typename P> struct TClient : TSocket::Parent
       case 'b':
       {
         auto b = packet.cast<Packet::b>();
-        auto h = list_start(b.port);
-        if(b.port==80) rpc.send('L',format("start %d on %s [http://%s:%d]",b.port,h.c_str(),h.c_str(),b.port));
-        else if(b.port==443) rpc.send('L',format("start %d on %s [https://%s:%d]",b.port,h.c_str(),h.c_str(),b.port));
-        else rpc.send('L',format("start %d on %s",b.port,h.c_str()));
+        list_start(b.port);
         break;
       }
       case 'x':
