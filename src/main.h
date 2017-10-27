@@ -180,7 +180,7 @@ struct EvSocket
     {
       if(!(errno==EINPROGRESS)) PEXIT;
     }
-    sleep(3);
+    //sleep(3);
     plog("%s: connect to fd=%s",str(addr).c_str(),NAME(s));
     return connect(s);
   }

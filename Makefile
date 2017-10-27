@@ -10,26 +10,26 @@ SRC=$(shell echo src/*)
 
 all: apt-install openportd
 
-openportd: $(SRC) Makefile
+openportd: $(SRC)
 	g++ -g -O0 ${CXXFLAGS} -o openportd src/main.cpp ${LIB}
 
 f:
 	g++ -g -O0 ${CXXFLAGS} -o openportd src/main.cpp ${LIB}
 
 s: openportd
-	./openportd s.active=yes c.active=no
+	./openportd s.active=yes c.active=no --debug=1
 
 ss: openportd
-	gdb.a ./openportd s.active=yes c.active=no
+	gdb.a ./openportd s.active=yes c.active=no --debug=1
 
 c: openportd
-	set -m; ./openportd s.active=no c.active=yes c.port=mp:40001
-
-c2: openportd
-	set -m; ./openportd --config=/tmp/o.conf s.active=no c.active=yes
+	./openportd s.active=no c.active=yes c.port=mp:40001 --debug=1
 
 cc: openportd
-	gdb.a ./openportd s.active=no c.active=yes
+	gdb.a ./openportd s.active=no c.active=yes --debug=1
+
+c2: openportd
+	./openportd --config=/tmp/o.conf s.active=no c.active=yes
 
 ed:
 	nano ~/.openportd.conf
@@ -45,3 +45,8 @@ install: all
 
 clean:
 	rm -f openportd
+
+commit:
+	git add .
+	git commit -m "make commit"
+	git push -u origin master

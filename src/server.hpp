@@ -5,7 +5,7 @@ template<typename P> struct TPub : TSocket::Parent
   P *parent;
   TSocket port;
   int64_t remote;
-  TPub(P *p,int fd,int dport):parent(p),port(this),remote(-1)
+  TPub(P *p,int fd,int dport):parent(p),port(this),remote(0)
   {
     plog("%p: new pub fd=%s",this,NAME(fd));
     port.connect(fd);
@@ -14,6 +14,7 @@ template<typename P> struct TPub : TSocket::Parent
       auto c = reply.cast<Packet::c>();
       if(c.addr==0) parent->remove(this);
       remote = c.addr;
+      dlog("remote=%p",(void*)remote);
     });
   }
   ~TPub()
@@ -31,11 +32,18 @@ template<typename P> struct TPub : TSocket::Parent
     int n = TSocket::recv(fd,data);
     if(n==0)
     { 
-      dlog("EOF fd=%d",NAME(fd));
+      dlog("EOF fd=%s",NAME(fd));
       parent->remove(fd);
       return;
     }
-    parent->rpc.send(remote,'d',data);
+    if(remote)
+      parent->rpc.send(remote,'d',data);
+    else
+    {
+      plog("null remote fd=%s data=%ld",NAME(fd),data.size());
+      sleep(5);
+      parent->remove(this);
+    }    
   }
 };
 
