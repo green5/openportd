@@ -18,6 +18,7 @@ int getport(struct sockaddr &a);
 #define C_STR str().c_str
 #define PCHAR(c) ((c<=' '||c>=127)?'.':c)
 extern int DEBUG;
+#define xlog dlog
 static const string null;
 extern string ext_ip;
 
