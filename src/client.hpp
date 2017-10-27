@@ -7,7 +7,8 @@ template<typename P> struct TLoc : TSocket::Parent
   int64_t remote;
   TLoc(P *p,int64_t addr_,int port_):parent(p),port(this),remote(addr_)
   {
-    string h = format("localhost:%d",port_);
+    //string h = format("localhost:%d",port_);
+    string h = format("127.0.0.2:%d",port_);
     dlog("%p(%p): loc connect to %s",this,remote,h.c_str());
     port.connect(h);
   }
