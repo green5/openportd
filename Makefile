@@ -50,8 +50,12 @@ commit:
 	git push -u origin master
 
 pull:
-	pkill -e openportd
+	(pkill -e openportd; exit 0)
 	(git status | grep modified: && exit 1 || exit 0)
 	git checkout .
 	git pull
 	make
+
+b:	pull
+	./openportd s.active=yes c.active=no --b
+
