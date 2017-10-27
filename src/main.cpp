@@ -22,8 +22,8 @@ int main(int ac,char *av[])
   Config::main(ac,av,arg);
   for(auto &i:arg)
   {
-    const string &o = i.first;
-    const string &v = i.second;
+    auto o = i.first;
+    auto v = i.second;
     if(o=="help") 
     {
       plog("version %d",VERSION);
@@ -72,12 +72,13 @@ string name_(int fd,int which)
   if(which&1)
   {
     len = sizeof(name);
-    if(getsockname(fd,&name,&len) == 0) ret += str(name);
+    ret += getsockname(fd,&name,&len) == 0 ? str(name) : "ERR";
   }
   if(which&2)
   {
     len = sizeof(name);
-    if(getpeername(fd,&name,&len) == 0) ret += "," + str(name);
+    ret += ",";
+    ret += getpeername(fd,&name,&len) == 0 ? str(name) : "ERR";
   }
   return "[" + ret + "]";
 }

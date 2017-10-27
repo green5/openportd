@@ -69,14 +69,14 @@ template<typename P> struct TClient : TSocket::Parent
     string config = format("%s:%d",rpc.remote('h').c_str(),port);
     const string &pref = parent->config.get(config);
     setport(addr,pref.size()?atoi(pref.c_str()):0);
-    so->listen(addr);
+    so->listen(addr,5);
     if(pref.size()==0)
     {
       parent->config.set(config,so->local('p'));
       parent->config.data.write();
     }
     port2[getport(addr)] = port;
-    //plog("listen on %d for %d",getport(addr),port);
+    plog("listen on %d for %d",getport(addr),port);
     return name_(so->fd());
   }
   void finish(const STD_H::Line &line,const char *cmd="none")
@@ -187,7 +187,7 @@ struct Server : TSocket::Parent
   map<int,Client*> client;
   Server():config("s",{
     {"active","no"},
-    {"port","0.0.0.0:60001"},
+    {"port","0.0.0.0:40001"},
   })
   {
   }

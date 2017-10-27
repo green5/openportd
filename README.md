@@ -8,15 +8,15 @@ Yet another tcp proxy
 0. Get source
     git clone https://github.com/green5/openportd && cd openportd
 
-1. Start on main server, port 60001 can be any admissible:
+1. Start on main server, port 40001 can be any admissible:
 
-    make install 
-    /usr/local/bin/openportd s.active=yes s.port=127.0.0.1:60001
+    make install;
+    /usr/local/bin/openportd s.active=yes s.port=127.0.0.1:40001
    
 2. Start on client:
 
-    make install 
-    /usr/local/bin/openportd c.active=yes c.port=Main-Server-Ip:60001
+    make install;
+    /usr/local/bin/openportd c.active=yes c.port=Main-Server-Ip:40001
 
 3. Test, Port - port allocated by server, see server or client log:
 

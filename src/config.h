@@ -108,13 +108,12 @@ struct Config
       char *a = (char*)t.c_str();
       if(a[0]=='-'&&a[1]=='-')
       {
-        string key(a += 2);
+        string key(a+2);
         char *val = strchr((char*)key.c_str(),'=');
-        if(val) *val++ = 0;
+        if(val) *val++ = 0, key = key.c_str();
         if(key=="help-config") 
         {
         }
-        //else if(key=="config") ///???
         else if(!strcmp(key.c_str(),"config")) 
         {
           plog("config: %s",val);
@@ -122,7 +121,7 @@ struct Config
         }
         else 
         {
-          map[key] = val ? val : "yes";
+          map[key] = val;
         }
       }
     }

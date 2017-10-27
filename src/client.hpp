@@ -44,7 +44,7 @@ struct Client : TSocket::Parent
   vector<int> ports;
   Client():config("c",{
     {"active","no"},
-    {"port","127.0.0.1:60001"},
+    {"port","127.0.0.1:40001"},
     {"ports","22,80,23"},
   }),rpc(this)      
   {

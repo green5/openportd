@@ -145,13 +145,13 @@ struct EvSocket
     if(fcntl(s,F_SETFL,fcntl(s,F_GETFL,0)|O_NONBLOCK)==1) PEXIT; 
     return s;
   }
-  EvSocket& listen(sockaddr &addr,int backlog=5)
+  EvSocket& listen(sockaddr &addr,int backlog)
   {
     int s = socket(-1,&addr);
     if(bind(s,&addr,sizeof(addr))==-1) PEXIT;
     socklen_t len = sizeof(addr);
     (void)getsockname(s,&addr,&len); // update addr
-    plog("listen on fd=%s",NAME(s));
+    dlog("listen on fd=%s",NAME(s));
     ::listen(s,backlog);
     io.set<EvSocket,&EvSocket::on_listen_socket>(this);
     io.start(s,ev::READ);
@@ -160,7 +160,7 @@ struct EvSocket
   EvSocket& listen(const string &port,int backlog=5)
   {
     struct sockaddr addr = unstr(AF_INET,port);
-    return listen(addr);
+    return listen(addr,backlog);
   }
   EvSocket& connect(int s)
   {
@@ -177,7 +177,8 @@ struct EvSocket
     {
       if(!(errno==EINPROGRESS)) PEXIT;
     }
-    plog("connect to fd=%s",NAME(s));
+    sleep(3);
+    plog("%s: connect to fd=%s",str(addr).c_str(),NAME(s));
     return connect(s);
   }
   static ev::default_loop loop_;

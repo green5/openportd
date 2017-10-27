@@ -1,4 +1,4 @@
-CXXFLAGS += -std=c++14 -pthread -I./include
+CXXFLAGS += -std=c++11 -pthread -I./include
 
 CXXFLAGS += -DUSE_EV
 LIB += -lev
@@ -23,7 +23,7 @@ ss: openportd
 	gdb.a ./openportd s.active=yes c.active=no
 
 c: openportd
-	set -m; ./openportd s.active=no c.active=yes
+	set -m; ./openportd s.active=no c.active=yes c.port=mp:40001
 
 c2: openportd
 	set -m; ./openportd --config=/tmp/o.conf s.active=no c.active=yes
@@ -40,7 +40,7 @@ apt-install:
 	@[ -r $(a) ] || echo "Install $(a) ..."
 	@[ -r $(a) ] || sudo apt-get install libev-dev
 
-install: openportd
+install: all
 	sudo -u root sh -c "mkdir -p /usr/local/bin && cp -va openportd /usr/local/bin"
 
 clean:
