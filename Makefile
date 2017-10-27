@@ -50,3 +50,9 @@ commit:
 	git add .
 	git commit -m "make commit"
 	git push -u origin master
+
+pull:
+	git status | grep modified: && exit 1
+	git checkout .
+	git pull
+	make

@@ -136,18 +136,22 @@ struct EvSocket
     }
     if(revents) plog("revents=%xh",revents);
   }
-  static int socket(int s, struct sockaddr *a=0)
+  static int socket_(struct sockaddr *a)
   {
-    if(s==-1) s = ::socket(a->sa_family, SOCK_STREAM, 0);
+    int s = ::socket(a->sa_family, SOCK_STREAM, 0);
     if(s==-1) PEXIT;
-    int opt = 1;
-    if(setsockopt(s,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt))==-1) PEXIT;
-    if(fcntl(s,F_SETFL,fcntl(s,F_GETFL,0)|O_NONBLOCK)==1) PEXIT; 
     return s;
+  }
+  static void setoption(int s)
+  {
+    int opt = 1;
+    if(setsockopt(s,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt))==-1) PERR;
+    if(fcntl(s,F_SETFL,fcntl(s,F_GETFL,0)|O_NONBLOCK)==-1) PERR; 
   }
   EvSocket& listen(sockaddr &addr,int backlog)
   {
-    int s = socket(-1,&addr);
+    int s = socket_(&addr);
+    setoption(s);
     if(bind(s,&addr,sizeof(addr))==-1)
     {
       pexit(errno,"%s",str(addr).c_str());
@@ -167,7 +171,7 @@ struct EvSocket
   }
   EvSocket& connect(int s)
   {
-    s = socket(s);
+    setoption(s);
     io.set<EvSocket,&EvSocket::on_connect_socket>(this);
     io.start(s,ev::READ);
     return *this;
@@ -175,11 +179,13 @@ struct EvSocket
   EvSocket& connect(const string &port)
   {
     struct sockaddr addr = unstr(AF_INET,port);
-    int s = socket(-1,&addr);
+    int s = socket_(&addr); 
     if(::connect(s,&addr,sizeof(addr))==-1) 
     {
-      if(!(errno==EINPROGRESS)) PEXIT;
+      //if(!(errno==EINPROGRESS)) 
+      PEXIT;
     }
+    setoption(s);    
     //sleep(3);
     plog("%s: connect to fd=%s",str(addr).c_str(),NAME(s));
     return connect(s);
