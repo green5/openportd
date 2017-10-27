@@ -318,7 +318,7 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
     io[1].iov_base = (void*)data;
     io[1].iov_len = size;
     ssize_t n = writev(fd(),io,data?2:1);
-    if(n!=head.size) plog("n=%ld h=%ld+%ld",n,sizeof(head),size);
+    if(n!=head.size) plog(errno,"n=%ld h=%ld+%ld",n,sizeof(head),size);
   }
   void send(int type,const string &data)
   {

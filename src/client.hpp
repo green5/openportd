@@ -5,19 +5,21 @@ template<typename P> struct TLoc : TSocket::Parent
   P *parent;
   TSocket port;
   int64_t remote;
+  size_t in,out;
   TLoc(P *p,int64_t addr_,int port_):parent(p),port(this),remote(addr_)
   {
-    /// bind local addr to ?
-    string h = format("localhost:%d",port_);
-    dlog("%p(%p): loc connect to %s",this,remote,h.c_str());
+    in = out = 0;
+    string h = format("localhost:%d",port_); /// bind local addr to ?
+    dlog("%p(%p): new loc connect to %s",this,remote,h.c_str());
     port.connect(h);
   }
   ~TLoc()
   {
-    dlog("%p",this);
+    plog("%p: in=%ld out=%ld",this,in,out);
   }
   void write(const string &data)
   {
+    in += data.size();
     port.write(data);
   }
   virtual void onread(int fd)
@@ -30,6 +32,8 @@ template<typename P> struct TLoc : TSocket::Parent
       parent->remove(fd);
       return;
     }
+    out += write_data.size();
+    if(remote==0) pexit("REMORE fd=%d",NAME(fd));
     parent->rpc.send(remote,'d',data);
   }
 };

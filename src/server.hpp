@@ -5,9 +5,11 @@ template<typename P> struct TPub : TSocket::Parent
   P *parent;
   TSocket port;
   int64_t remote;
+  size_t in,out;
   TPub(P *p,int fd,int dport):parent(p),port(this),remote(0)
   {
-    plog("%p: new pub fd=%s",this,NAME(fd));
+    in = out = 0;
+    dlog("%p: new pub fd=%s",this,NAME(fd));
     port.connect(fd);
     Packet::c c((int64_t)this,dport);
     parent->rpc.call('c',c,[this](Packet &reply){
@@ -21,7 +23,7 @@ template<typename P> struct TPub : TSocket::Parent
   ~TPub()
   {
     parent->rpc.send(remote,'e',"");
-    dlog("%p",this);
+    plog("%p: in=%ld out=%ld",this,in,out);
   }
   string write_data;
   void flush()
@@ -31,11 +33,13 @@ template<typename P> struct TPub : TSocket::Parent
       dlog("null remote fd=%s data=%ld",NAME(port.fd()),write_data.size());
       return;
     }
+    out += write_data.size();
     parent->rpc.send(remote,'d',write_data);
     write_data.clear();
   }
   void write(const string &data)
   {
+    in += data.size();
     port.write(data);
   }
   virtual void onread(int fd)
