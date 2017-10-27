@@ -14,7 +14,8 @@ template<typename P> struct TPub : TSocket::Parent
       auto c = reply.cast<Packet::c>();
       if(c.addr==0) parent->remove(this);
       remote = c.addr;
-      dlog("remote=%p",(void*)remote);
+      dlog("remote=%p fd=%s",(void*)remote,NAME(port.fd()));
+      flush();
     });
   }
   ~TPub()
@@ -22,28 +23,30 @@ template<typename P> struct TPub : TSocket::Parent
     parent->rpc.send(remote,'e',"");
     dlog("%p",this);
   }
+  string write_data;
+  void flush()
+  {
+    if(!remote)
+    {
+      dlog("null remote fd=%s data=%ld",NAME(port.fd()),write_data.size());
+      return;
+    }
+    parent->rpc.send(remote,'d',write_data);
+  }
   void write(const string &data)
   {
     port.write(data);
   }
   virtual void onread(int fd)
   {
-    string data;
-    int n = TSocket::recv(fd,data);
+    int n = TSocket::recv(fd,write_data);
     if(n==0)
     { 
       dlog("EOF fd=%s",NAME(fd));
       parent->remove(fd);
       return;
     }
-    if(remote)
-      parent->rpc.send(remote,'d',data);
-    else
-    {
-      plog("null remote fd=%s data=%ld",NAME(fd),data.size());
-      sleep(5);
-      parent->remove(this);
-    }    
+    flush();
   }
 };
 

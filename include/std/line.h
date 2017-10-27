@@ -130,9 +130,9 @@ namespace STD_H
 #define pbool(...) pbool_(__FLF__,__VA_ARGS__)
 #define pkernel  STD_H::Line::pkernel_
 
-#define PLOG    plog("MARK")
-#define PERR    perr(errno)
-#define PEXIT   pexit(errno)
+#define PLOG    plog("LOG")
+#define PERR    perr(errno,"ERROR")
+#define PEXIT   pexit(errno,"EXIT")
 #define PTHROW  pthrow()
 #define PFATAL  pfatal()
 #define PKERNEL pkernel()
