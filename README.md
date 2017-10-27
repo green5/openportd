@@ -8,7 +8,7 @@ Yet another tcp proxy
 0. Get source
     git clone https://github.com/green5/openportd && cd openportd
 
-1. Start on main server, port 40001 can be any admissible:
+1. Start on main server, 40001 can be any port admissible:
 
     make install;
     /usr/local/bin/openportd s.active=yes s.port=127.0.0.1:40001
@@ -22,3 +22,5 @@ Yet another tcp proxy
 
     ssh -p Port Main-Server-Ip
   
+
+4. Check security (access to local service from localhost)
