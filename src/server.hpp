@@ -9,28 +9,28 @@ template<typename P> struct TPub : TSocket::Parent
   TPub(P *p,int fd,int dport):parent(p),port(this),remote(0)
   {
     in = out = 0;
-    dlog("%p: new pub fd=%s",this,NAME(fd));
     port.connect(fd);
+    plog("%p: new pub fd=%s",this,NAME(port.fd()));
     Packet::c c((int64_t)this,dport);
     parent->rpc.call('c',c,[this](Packet &reply){
       auto c = reply.cast<Packet::c>();
       if(c.addr==0) parent->remove(this);
       remote = c.addr;
-      dlog("remote=%p fd=%s",(void*)remote,NAME(port.fd()));
+      plog("%p(%p): remote %s",this,(void*)remote,NAME(port.fd()));
       flush();
     });
   }
   ~TPub()
   {
-    parent->rpc.send(remote,'e',"");
-    plog("%p: %s in=%ld out=%ld",this,NAME(port.fd()),in,out);
+    //parent->rpc.send(remote,'e',"");
+    plog("%p(%p): %s in=%ld out=%ld",this,(void*)remote,NAME(port.fd()),in,out);
   }
   string write_data;
   void flush()
   {
-    if(!remote)
+    if(!remote) // f.e. ssh
     {
-      dlog("null remote fd=%s data=%ld",NAME(port.fd()),write_data.size());
+      plog("null remote fd=%s data=%ld",NAME(port.fd()),write_data.size());
       return;
     }
     out += write_data.size();
@@ -70,6 +70,11 @@ template<typename P> struct TClient : TSocket::Parent
   TClient(P *p,int fd):parent(p),rpc(this),auth(false)
   {
     rpc.connect(fd);
+  }
+  ~TClient()
+  {
+    PLOG;
+    for(auto l:list) delete l.second;
   }
   string list_start(int port) 
   {
@@ -165,7 +170,7 @@ template<typename P> struct TClient : TSocket::Parent
         auto h = list_start(b.port);
         if(b.port==80) rpc.send('L',format("start %d on %s [http://%s:%d]",b.port,h.c_str(),h.c_str(),b.port));
         else if(b.port==443) rpc.send('L',format("start %d on %s [https://%s:%d]",b.port,h.c_str(),h.c_str(),b.port));
-	else rpc.send('L',format("start %d on %s",b.port,h.c_str()));
+        else rpc.send('L',format("start %d on %s",b.port,h.c_str()));
         break;
       }
       case 'x':
@@ -175,6 +180,7 @@ template<typename P> struct TClient : TSocket::Parent
         break;
       }
       case 'd':
+      case 'f':
       case 'e':
       {
         auto i = std::find_if(pub.begin(),pub.end(),[&packet](const std::pair<int,Pub*> &a)
@@ -185,7 +191,7 @@ template<typename P> struct TClient : TSocket::Parent
         {
           plog("fd=%s unknown pub=%p %s",NAME(rpc.fd()),(void*)packet.head.remote,packet.C_STR());
         }
-        else if(type=='e') remove(i->second);
+        else if(type=='e'||type=='f') remove(i->second);
         else if(type=='d') i->second->write(packet.data);
         break;
       }

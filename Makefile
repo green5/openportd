@@ -1,7 +1,9 @@
 CXXFLAGS += -std=c++11 -pthread -I./include
 
 CXXFLAGS += -DUSE_EV
-LIB += -lev
+LIB += -lev -lbsd
+PKG = libbsd-dev libev-dev
+TEST = /usr/include/ev++.h
 
 #CXXFLAGS += -DUSE_LEV
 #LIB += -levent
@@ -17,25 +19,23 @@ f:
 	g++ -g -O0 ${CXXFLAGS} -o openportd src/main.cpp ${LIB}
 
 s: openportd
-	./openportd s.active=yes c.active=no --debug=0
+	$${x} ./openportd s.active=yes c.active=no --debug=$${z}
 
 ss: openportd
-	gdb.a ./openportd s.active=yes c.active=no --debug=1
+	$${x} ./openportd s.active=yes c.active=no --debug=$${z}
 
 c: openportd
-	./openportd s.active=no c.active=yes c.port=mp:40001 --debug=0
+	$${x} ./openportd s.active=no c.active=yes --debug=$${z} c.port=mp:40001
 
 cc: openportd
-	gdb.a ./openportd s.active=no c.active=yes --debug=1
+	$${x} ./openportd s.active=no c.active=yes --debug=$${z} c.port=localhost:40001
 
 ed:
 	nano ~/.openportd.conf
 
-a=/usr/include/ev++.h
-
 apt-install:
-	@[ -r $(a) ] || echo "Install $(a) ..."
-	@[ -r $(a) ] || sudo apt-get install libev-dev
+	@[ -r $(TEST) ] || echo "Install $(PKG)"
+	@[ -r $(TEST) ] || sudo apt-get install $(PKG)
 
 install: all
 	sudo -u root sh -c "mkdir -p /usr/local/bin && cp -va openportd /usr/local/bin"

@@ -146,7 +146,7 @@ struct EvSocket
   {
     int opt = 1;
     if(setsockopt(s,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt))==-1) PERR;
-    if(fcntl(s,F_SETFL,fcntl(s,F_GETFL,0)|O_NONBLOCK)==-1) PERR; 
+    //if(fcntl(s,F_SETFL,fcntl(s,F_GETFL,0)|O_NONBLOCK)==-1) PERR; 
   }
   EvSocket& listen(sockaddr &addr,int backlog)
   {
@@ -187,7 +187,7 @@ struct EvSocket
     }
     setoption(s);    
     //sleep(3);
-    plog("%s: connect to fd=%s",str(addr).c_str(),NAME(s));
+    //plog("%s: connect to fd=%s",str(addr).c_str(),NAME(s));
     return connect(s);
   }
   static ev::default_loop loop_;
@@ -316,7 +316,7 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
     io[0].iov_base = &head;
     io[0].iov_len = sizeof(head);
     io[1].iov_base = (void*)data;
-    io[1].iov_len = size;
+    io[1].iov_len = data ? size : 0;
     ssize_t n = writev(fd(),io,data?2:1);
     if(n!=head.size) plog(errno,"n=%ld h=%ld+%ld",n,sizeof(head),size);
   }

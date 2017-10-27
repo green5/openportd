@@ -1,4 +1,5 @@
 #include "main.h"
+#include <bsd/string.h>
 
 template<typename P> struct TLoc : TSocket::Parent
 {
@@ -6,35 +7,114 @@ template<typename P> struct TLoc : TSocket::Parent
   TSocket port;
   int64_t remote;
   size_t in,out;
-  TLoc(P *p,int64_t addr_,int port_):parent(p),port(this),remote(addr_)
+  const int lport;
+  TLoc(P *p,int64_t addr_,int port_):parent(p),port(this),remote(addr_),lport(port_)
   {
     in = out = 0;
-    string h = format("localhost:%d",port_); /// bind local addr to ?
-    dlog("%p(%p): new loc connect to %s",this,remote,h.c_str());
+    string h = format("localhost:%d",lport); /// bind local addr to 127.0.0.2
     port.connect(h);
+    plog("%p(%p): new loc fd=%s",this,remote,NAME(port.fd()));
   }
   ~TLoc()
   {
-    plog("%p: %s in=%ld out=%ld",this,NAME(port.fd()),in,out);
+    //parent->rpc.send(remote,'f',"");
+    plog("%p(%p): %s in=%ld out=%ld",this,(void*)remote,NAME(port.fd()),in,out);
   }
   void write(const string &data)
   {
+    if(lport==80) 
+    {
+      //check_http(data);
+    }
     in += data.size();
     port.write(data);
   }
+  string write_data;
+  void flush()
+  {
+    if(!remote)
+    {
+      pexit("null REMOTE fd=%s data=%ld",NAME(port.fd()),write_data.size());
+      return;
+    }
+    out += write_data.size();
+    parent->rpc.send(remote,'d',write_data);
+    write_data.clear();
+  }
   virtual void onread(int fd)
   {
-    string data;
-    int n = TSocket::recv(fd, data);
+    int n = TSocket::recv(fd, write_data);
+    out += n;
     if(n==0)
     { 
       parent->rpc.send(remote,'e',"");
       parent->remove(fd);
       return;
     }
-    if(remote==0) pexit("REMOTE fd=%s",NAME(fd));
-    out += data.size();
-    parent->rpc.send(remote,'d',data);
+    bool done = false;
+    if(lport==80) 
+    {
+      done = check_http(write_data);
+      if(!done) { PLOG; return; }
+    }
+    flush();
+    if(done)
+    {
+      parent->rpc.send(remote,'e',"");
+      parent->remove(fd);
+      return;
+    }
+  }
+  bool check_http(const string &data)
+  {
+    if(data.size()==0)
+    {
+      plog("NULL");
+      return false;
+    }
+    map_t h;
+    char *t, *s, *e;
+    s = (char*)data.c_str();
+    e = s + data.size();
+    for(int i=0;s<e;i++,s=t+2)
+    {
+      t = strnstr(s,"\r\n",e-s); //t = strstr(s,"\r\n");
+      if(t==0) { PLOG; break; }
+      if(t==s) { t += 2; break; }
+      if(i==0)
+      {
+        h["method"] = string(s,0,t-s);
+      }
+      else
+      {
+        char *c = strnstr(s,": ",t-s);
+        if(c==0) PLOG;
+        else h[string(s,c-s)] = string(c+2,t-c-2);
+        //h.push_back(string(s,0,t-s));
+      }
+    }
+    s = (char*)data.c_str();
+    size_t hlen = t - s;
+    size_t tlen = s + data.size() - t;
+    // tail = Content-Length (if there is)
+    // Content-Encoding: gzip (size[4] + "\n" + h[8] + ...)
+    // data[Content-Length]
+    if(tlen==0) return true; // only headers
+    if(h["Content-Encoding"]=="gzip")
+    {
+      size_t nz = strtol(string(t,4).c_str(),NULL,16) + 4 + 1 + 8;
+      if(nz!=tlen) plog("nz=%d tail=%ld %s",nz,tlen,dump(data).c_str());
+      return nz <= tlen;
+    }
+    if(h["Content-Length"].size())
+    {
+      size_t nz = strtol(h["Content-Length"].c_str(),NULL,10);
+      if(nz!=tlen) plog("nz=%d tail=%ld %s",nz,tlen,dump(data).c_str());
+      return nz <= tlen;
+    }
+    plog("data=%ld tail=%d",data.size(),tlen);
+    for(auto &i:h) plog("%s: %s",i.first.c_str(),i.second.c_str());
+    return false;
   }
 };
 
@@ -105,11 +185,11 @@ struct Client : TSocket::Parent
         auto c = packet.cast<Packet::c>();
         if(1==1)
         {
-	  auto a = std::find(ports.begin(),ports.end(),c.port);
-	  if(a==ports.end())
-	  {
-	    rpc.reply(packet,Packet::c(0,-1));
-	    rpc.send('L',format("bad port %d",c.port));
+      	  auto a = std::find(ports.begin(),ports.end(),c.port);
+      	  if(a==ports.end())
+      	  {
+      	    rpc.reply(packet,Packet::c(0,-1));
+      	    rpc.send('L',format("bad port %d",c.port));
             break;
           }
         }
@@ -120,6 +200,7 @@ struct Client : TSocket::Parent
       }
       case 'd':
       case 'e':
+      case 'f':
       {
         auto i = std::find_if(loc.begin(),loc.end(),[&packet](const std::pair<int,Loc*> &a)
         {
@@ -129,7 +210,7 @@ struct Client : TSocket::Parent
         {
           if(type!='e') plog("fd=%s unknown loc=%p %s",NAME(rpc.fd()),(void*)packet.head.remote,packet.C_STR());
         }
-        else if(type=='e') remove(i->second);
+        else if(type=='e'||type=='f') remove(i->second);
         else if(type=='d') i->second->write(packet.data);
         break;
       }
