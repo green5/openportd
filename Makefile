@@ -50,6 +50,7 @@ commit:
 	git push -u origin master
 
 pull:
+	(pid openportd -k; exit 0)
 	(git status | grep modified: && exit 1 || exit 0)
 	git checkout .
 	git pull
