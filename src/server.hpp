@@ -32,6 +32,7 @@ template<typename P> struct TPub : TSocket::Parent
       return;
     }
     parent->rpc.send(remote,'d',write_data);
+    write_data.clear();
   }
   void write(const string &data)
   {

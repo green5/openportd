@@ -52,7 +52,7 @@ commit:
 	git push -u origin master
 
 pull:
-	git status | grep modified: && exit 1
+	(git status | grep modified: && exit 1 || exit 0)
 	git checkout .
 	git pull
 	make
