@@ -51,10 +51,10 @@ template<typename P> struct TLoc : TSocket::Parent
       return;
     }
     bool done = false;
-    if(lport==80) 
+    if(lport==80) /// 443
     {
       done = check_http(write_data);
-      if(!done) { plog("http continue"); return; }
+      if(!done) { dlog("http continue"); return; }
     }
     flush();
     if(done)
@@ -129,7 +129,7 @@ struct Client : TSocket::Parent
   Client():config("c",{
     {"active","no"},
     {"port","127.0.0.1:40001"},
-    {"ports","22,80,23"},
+    {"ports","22,80"},
   }),rpc(this)      
   {
     for(auto p:STD_H::split(config.get("ports").c_str(),",")) ports.push_back(atoi(p.c_str()));
