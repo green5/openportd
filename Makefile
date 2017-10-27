@@ -17,19 +17,16 @@ f:
 	g++ -g -O0 ${CXXFLAGS} -o openportd src/main.cpp ${LIB}
 
 s: openportd
-	./openportd s.active=yes c.active=no --debug=1
+	./openportd s.active=yes c.active=no --debug=0
 
 ss: openportd
 	gdb.a ./openportd s.active=yes c.active=no --debug=1
 
 c: openportd
-	./openportd s.active=no c.active=yes c.port=mp:40001 --debug=1
+	./openportd s.active=no c.active=yes c.port=mp:40001 --debug=0
 
 cc: openportd
 	gdb.a ./openportd s.active=no c.active=yes --debug=1
-
-c2: openportd
-	./openportd --config=/tmp/o.conf s.active=no c.active=yes
 
 ed:
 	nano ~/.openportd.conf
