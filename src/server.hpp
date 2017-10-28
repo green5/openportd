@@ -176,7 +176,8 @@ template<typename P> struct TClient : TSocket::Parent
     }    
     if(!auth)
     {
-      return; /// ?call or reply
+      finish(__Line__);
+      return; 
     }
     switch(type)
     {

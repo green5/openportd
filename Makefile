@@ -56,6 +56,6 @@ pull:
 	git pull
 	make
 
-b:	pull
+b:	all
 	./openportd s.active=yes c.active=no --b
 
