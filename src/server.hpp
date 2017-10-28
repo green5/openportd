@@ -10,8 +10,8 @@ template<typename P> struct TPub : TSocket::Parent
   size_t in,out;
   TPub(tid_t tid_,P *p,int fd,int lport_):tid(tid_),parent(p),port(this),remote(0),lport(lport_),in(0),out(0)
   {
-    dlog("%s",C_STR());
     port.connect(fd);
+    dlog("%s",C_STR());
     Packet::c c(tid,lport);
     parent->rpc.call('c',c,this);
   }

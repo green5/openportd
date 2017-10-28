@@ -10,9 +10,9 @@ template<typename P> struct TLoc : TSocket::Parent
   size_t in,out;
   TLoc(tid_t tid_,P *p,tid_t fr,int port_):tid(tid_),remote(fr),parent(p),port(this),lport(port_),in(0),out(0)
   {
-    dlog("%s",C_STR());
     string h = format("localhost:%d",lport); /// bind local addr to 127.0.0.2
     port.connect(h);
+    dlog("%s",C_STR());
   }
   string str() const
   {
