@@ -33,6 +33,7 @@ string ext_ip;
 int main(int ac,char *av[])
 {
   ext_ip = get_ext_ip();
+  //passert(sizeof(Header)==24,"Header=%ld",sizeof(Header));
   map_t arg;
   Config::main(ac,av,arg);
   for(auto &i:arg)

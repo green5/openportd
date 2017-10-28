@@ -161,6 +161,7 @@ struct Client : TSocket::Parent
     if(i==loc.end())
     {
       plog("unregister loc fd=%s",NAME(fd));
+      close(fd);
     }
     else
     {

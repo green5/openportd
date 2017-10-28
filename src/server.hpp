@@ -133,6 +133,7 @@ template<typename P> struct TClient : TSocket::Parent
     if(i==pub.end())
     {
       plog("unregister pub fd=%s",NAME(fd));
+      close(fd);
     }
     else
     {

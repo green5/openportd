@@ -332,11 +332,11 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
   }
   virtual void setoption(int fd)
   {
-    if(fcntl(fd,F_SETFL,fcntl(fd,F_GETFL,0)|O_NONBLOCK)==-1) PERR; 
+    //if(fcntl(fd,F_SETFL,fcntl(fd,F_GETFL,0)|O_NONBLOCK)==-1) PERR; 
     int r1 = Socket(fd).get(SO_RCVBUF);
     int s1 = Socket(fd).get(SO_SNDBUF);
-    //Socket(fd).set(SO_SNDBUF,2000000);
-    //Socket(fd).set(SO_RCVBUF,2000000);
+    Socket(fd).set(SO_SNDBUF,1000000);
+    Socket(fd).set(SO_RCVBUF,1000000);
     int r2 = Socket(fd).get(SO_RCVBUF);
     int s2 = Socket(fd).get(SO_SNDBUF);
     plog("rs_buf(%s) %d,%d -> %d,%d",NAME(fd),r1,s1,r2,s2);
@@ -356,7 +356,7 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
     io[1].iov_base = (void*)data;
     io[1].iov_len = data ? size : 0;
     ssize_t n = writev(fd(),io,data?2:1);
-    if(n!=head.size) plog(errno,"n=%ld h=%ld+%ld",n,sizeof(head),size);
+    if(n!=head.size) plog(errno,"fd=%s n=%ld v=%ld",NAME(fd()),n,sizeof(head)+size);
   }
   void send(int type,const string &data)
   {

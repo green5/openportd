@@ -441,7 +441,7 @@ namespace STR_H_ {
   }
   static string str(const sockaddr &a,int flag='a')
   {
-    string host,port;
+    string host, port;
     const size_t alen=sizeof(sockaddr);
     if (a.sa_family == AF_INET)
     {
