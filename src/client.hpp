@@ -13,12 +13,12 @@ template<typename P> struct TLoc : TSocket::Parent
     in = out = 0;
     string h = format("localhost:%d",lport); /// bind local addr to 127.0.0.2
     port.connect(h);
-    xlog("%p(%p): new loc fd=%s",this,remote,NAME(port.fd()));
+    dlog("%p(%p): new loc fd=%s",this,remote,NAME(port.fd()));
   }
   ~TLoc()
   {
     //parent->rpc.send(remote,'f',"");
-    xlog("%p(%p): %s in=%ld out=%ld",this,(void*)remote,NAME(port.fd()),in,out);
+    dlog("%p(%p): %s in=%ld out=%ld",this,(void*)remote,NAME(port.fd()),in,out);
   }
   void write(const string &data)
   {

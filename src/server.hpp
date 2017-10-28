@@ -10,7 +10,7 @@ template<typename P> struct TPub : TSocket::Parent
   {
     in = out = 0;
     port.connect(fd);
-    xlog("%p: new pub fd=%s",this,NAME(port.fd()));
+    dlog("%p: new pub fd=%s",this,NAME(port.fd()));
     Packet::c c((int64_t)this,dport);
     parent->rpc.call('c',c,[this](Packet &reply){
       auto c = reply.cast<Packet::c>();
@@ -23,7 +23,7 @@ template<typename P> struct TPub : TSocket::Parent
   ~TPub()
   {
     //parent->rpc.send(remote,'e',"");
-    xlog("%p(%p): %s in=%ld out=%ld",this,(void*)remote,NAME(port.fd()),in,out);
+    dlog("%p(%p): %s in=%ld out=%ld",this,(void*)remote,NAME(port.fd()),in,out);
   }
   string write_data;
   void flush()

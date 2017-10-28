@@ -16,7 +16,6 @@ int getport(struct sockaddr &a);
 #define C_STR str().c_str
 #define PCHAR(c) ((c<=' '||c>=127)?'.':c)
 extern int DEBUG;
-#define xlog dlog
 static const string null;
 extern string ext_ip;
 
@@ -348,8 +347,8 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
     head.type = type;
     head.xid = xid;
     head.remote = remote;  
-    if(DEBUG==1) plog("[%s] size=%d",head.C_STR(),size);
-    if(DEBUG==2) plog("[%s] size=%d %s",head.C_STR(),size,dump(data,size).c_str());
+    if(DEBUG==2) plog("[%s] size=%d",head.C_STR(),size);
+    if(DEBUG==3) plog("[%s] size=%d %s",head.C_STR(),size,dump(data,size).c_str());
     struct iovec io[2];
     io[0].iov_base = &head;
     io[0].iov_len = sizeof(head);
@@ -388,8 +387,8 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
   }
   void read(Packet &packet)
   {
-    if(DEBUG==1) plog("[%s]",packet.C_STR());
-    if(DEBUG==2) plog("[%s]%s",packet.C_STR(),dump(packet.data).c_str());
+    if(DEBUG==2) plog("[%s]",packet.C_STR());
+    if(DEBUG==3) plog("[%s]%s",packet.C_STR(),dump(packet.data).c_str());
     switch(packet.head.type)
     {
       case 'L':
