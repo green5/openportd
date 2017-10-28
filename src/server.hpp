@@ -2,29 +2,30 @@
 
 template<typename P> struct TPub : TSocket::Parent
 {
+  tid_t tid;
   P *parent;
   TSocket port;
-  int64_t remote;
+  tid_t remote;
+  int lport;
   size_t in,out;
-  TPub(P *p,int fd,int dport):parent(p),port(this),remote(0)
+  TPub(tid_t tid_,P *p,int fd,int lport_):tid(tid_),parent(p),port(this),remote(0),lport(lport_),in(0),out(0)
   {
-    in = out = 0;
+    dlog("%s",C_STR());
     port.connect(fd);
-    dlog("%p: new pub fd=%s",this,NAME(port.fd()));
-    Packet::c c((int64_t)this,dport);
+    Packet::c c(tid,lport);
     parent->rpc.call('c',c,this);
   }
-  virtual void onreply(Packet &reply)
+  void onreply(Packet &reply)
   {
     auto c = reply.cast<Packet::c>();
     if(c.addr==0) parent->remove(this,__Line__);
     remote = c.addr;
-    dlog("%p(%p): remote %s",this,(void*)remote,NAME(port.fd()));
+    dlog("%p: remote=%d %s",this,remote,NAME(port.fd()));
     flush();
   }
   string str() const
   {
-    return format("%p(%p): %s io=%ld,%ld so=%p",this,(void*)remote,NAME(port.fd()),in,out,&port);
+    return format("%p(#%d,#%d): %s io=%ld,%ld",this,tid,remote,NAME(port.fd()),in,out);
   }
   string write_data;
   void flush()
@@ -49,13 +50,32 @@ template<typename P> struct TPub : TSocket::Parent
   virtual void onread(int fd)
   {
     int n = TSocket::recv(fd,write_data);
-    flush();
-    if(n==0)
+    if(write_data.size()==0)
     { 
-      dlog("EOF fd=%s",NAME(fd));
+      dlog("EOF fd=%s %s",NAME(fd),C_STR());
       parent->remove(this,__Line__);
       return;
     }
+#if 1
+    if(lport==80)
+    {
+      http h;
+      int done = h.parse(write_data);
+      if(done==0||done==1)
+      {
+        h.set("Connection","close");     
+        write_data = h.data();
+        flush();
+      }
+      else
+      {
+        plog("%s",h.str().c_str());
+        plog("%s",dump(write_data).c_str());
+      }
+      return;
+    }
+#endif
+    flush();
   }
 };
 
@@ -65,7 +85,7 @@ template<typename P> struct TClient : TSocket::Parent
   typedef TChannel<TClient> Channel;
   public:
   P *parent;
-  map<Pub*,int> pub_;
+  Map<Pub> map_;
   map<int,TSocket*> listPort; /// to pub?
   map<int,int> port2;
   Channel rpc;
@@ -104,7 +124,7 @@ template<typename P> struct TClient : TSocket::Parent
     string http = port==80 ? "http://" : "";
     string log = format("listen on %s%s:%d for %d",http.c_str(),ext_ip.c_str(),aport,port);
     plog("%s",log.c_str());
-    rpc.send('L',log);
+    rpc.send(0,'L',log);
   }
   void finish(const Line &line,const char *cmd="none")
   {
@@ -124,34 +144,15 @@ template<typename P> struct TClient : TSocket::Parent
       plog("local=%d",local);
       return -1;
     }
-    Pub *pub = new Pub(this,fd,port2[local]);
-    pub_[pub] = 1;
+    Pub *pub = map_.create(this,fd,port2[local]);
+    /// и все?
     return 0;
-  }
-  Pub *find(Pub *pub)
-  {
-    auto i = pub_.find(pub);
-    return i==pub_.end()?0:i->first;
   }
   void remove(Pub *pub,const Line &line)
   {
-    Pub *p = find(pub);
-    if(DEBUG||(p&&p->remote==0)) plog("%s %s %p",line.C_STR(),pub->C_STR(),p);
-    //rpc.send(p->remote,'e',"");
-    pub_.erase(p);
-    delete p;
-  }
-  void onreply(TSocket::Parent* pub,Packet &packet)
-  {
-    Pub *p = find((Pub*)pub);
-    if(p) 
-    {
-      p->onreply(packet);
-    }
-    else
-    {
-      plog("%p fd=%s unknown reply %s",pub,NAME(rpc.fd()),packet.C_STR());
-    }
+    dlog("%s %s",line.C_STR(),pub->C_STR());
+    //rpc.send(pub->remote,'e',"");
+    map_.erase(pub);
   }
   void onrpc(Packet &packet)
   {
@@ -163,19 +164,19 @@ template<typename P> struct TClient : TSocket::Parent
       const string &pw = parent->config.get("pw");
       if(b.version!=VERSION)
       {
-        rpc.send('E',format("bad version, must %d",VERSION));
+        rpc.send(0,'E',format("bad version, must %d",VERSION));
         return;
       }
       if(pw.size() && strcmp(pw.c_str(),b.pw)) 
       {
-        rpc.send('E',"bad pw");
+        rpc.send(0,'E',"bad pw");
         return;
       }
       auth = true;
     }    
     if(!auth)
     {
-      return; /// ?call
+      return; /// ?call or reply
     }
     switch(type)
     {
@@ -195,10 +196,10 @@ template<typename P> struct TClient : TSocket::Parent
       case 'f':
       case 'e':
       {
-        Pub *pub = find((Pub*)packet.head.remote);
+        Pub *pub = map_.find(packet.head.to);
         if(pub==0)
         {
-          plog("fd=%s unknown pub=%p %s",NAME(rpc.fd()),(void*)packet.head.remote,packet.C_STR());
+          if(type!='e') perr("fd=%s unknown pub %s",NAME(rpc.fd()),packet.C_STR());
         }
         else if(type=='e'||type=='f') remove(pub,__Line__);
         else if(type=='d') pub->write(packet.data);
@@ -206,7 +207,7 @@ template<typename P> struct TClient : TSocket::Parent
       }
       default:
       {         
-        plog("fd=%s unknown packet %s",NAME(rpc.fd()),packet.C_STR());
+        perr("fd=%s unknown packet %s",NAME(rpc.fd()),packet.C_STR());
         finish(__Line__);
         break;
       }

@@ -266,15 +266,16 @@ ev::default_loop EvSocket::loop_;
 
 #include "config.h"
 
+typedef int tid_t; 
+
 struct Header
 {
   unsigned size;
-  unsigned type;
-  unsigned xid;
-  int64_t remote;
+  int type;
+  tid_t fr,to;
   string str() const
   {
-    return format("size=%d (%c) xid=%d remote=%p",size,type,xid,(void*)remote);
+    return format("size=%d (%c) #%d->#%d",size,type,fr,to);
   }
 };
 
@@ -315,19 +316,16 @@ struct Packet
   };
   struct c
   {
-    int64_t addr;
+    tid_t addr;
     int port;
-    c(int64_t addr_,int port_):addr(addr_),port(port_){}
+    c(tid_t addr_,int port_=0):addr(addr_),port(port_){}
   };
 };
 
 template<typename P> struct TChannel : TSocket, TSocket::Parent
 {
   P *parent;
-  int xid_;
-  typedef TSocket::Parent* ret_t;
-  std::map<int,ret_t> rpc;
-  TChannel(P*p):TSocket(this),parent(p),xid_(0)
+  TChannel(P*p):TSocket(this),parent(p)
   {
   }
   virtual void setoption(int fd)
@@ -341,13 +339,13 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
     int s2 = Socket(fd).get(SO_SNDBUF);
     plog("rs_buf(%s) %d,%d -> %d,%d",NAME(fd),r1,s1,r2,s2);
   }
-  void send(int type,const void *data=0,int size=0,int xid=0,int64_t remote=0)
+  void send_(tid_t fr,tid_t to,int type,const void *data=0,int size=0)
   {
     Header head;
     head.size = sizeof(head) + size;
     head.type = type;
-    head.xid = xid;
-    head.remote = remote;  
+    head.fr = fr;
+    head.to = to;
     if(DEBUG==2) plog("[%s] size=%d",head.C_STR(),size);
     if(DEBUG==3) plog("[%s] size=%d %s",head.C_STR(),size,dump(data,size).c_str());
     struct iovec io[2];
@@ -358,31 +356,24 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
     ssize_t n = writev(fd(),io,data?2:1);
     if(n!=head.size) 
     {
-      if(errno==EBADF) asm("int $3");
       plog(errno,"fd=%s n=%ld v=%ld",NAME(fd()),n,sizeof(head)+size);
     }
   }
-  void send(int type,const string &data)
+  void send(tid_t tid,int type,const string &data)
   {
-    return send(type,data.c_str(),data.size());
+    send_(0,tid,type,data.c_str(),data.size());
   }
-  void send(int64_t remote,int type,const string &data)
+  template<typename D> void send(tid_t tid,int type,const D& d)
   {
-    return send(type,data.c_str(),data.size(),0,remote);
+    send_(0,tid,type,&d,sizeof(d));
   }
-  template<typename T> void send(int type,const T& t)
+  template<typename D,typename R> void call(int type,const D& d,R *ret)
   {
-    return send(type,&t,sizeof(t));
+    send_(ret->tid,0,type,&d,sizeof(d));
   }
-  template<typename T> void call(int type,const T& t,const ret_t &ret)
+  template<typename D> void reply(const Packet &o,const D& d)
   {
-    int xid = ++xid_ ? xid_ : ++xid_;
-    rpc[xid] = ret;
-    return send(type,&t,sizeof(t),xid);
-  }
-  template<typename T> void reply(Packet &o,const T& t)
-  {
-    return send('R',&t,sizeof(t),o.head.xid);
+    send_(0,o.head.fr,'R',&d,sizeof(d));
   }
   std::list<Packet*> write_queue;
   std::string read_buffer;
@@ -409,14 +400,9 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
       }
       case 'R':
       {
-        auto i = rpc.find(packet.head.xid);
-        if(i!=rpc.end())
-        {
-          parent->onreply(i->second,packet);
-          rpc.erase(i);
-        }
-        else
-          plog("fd=%s bad reply=%s",NAME(TSocket::fd()),packet.C_STR());
+        auto t = parent->map_.find(packet.head.to);
+        if(t) t->onreply(packet);
+        else plog("fd=%s unknown reply %s",NAME(fd()),packet.C_STR());
         break;
       }
       default:
@@ -532,6 +518,30 @@ struct http
     for(auto &i:head) ret += i.first + ": " + i.second + "\n";
     ret += format("tail: %ld,%ld",head.size(),tail.size());
     return ret;
+  }
+};
+
+template<typename T> struct Map
+{
+  tid_t tid_;
+  map<tid_t,T*> map_;
+  Map():tid_(0)
+  {
+  }
+  T *find(tid_t id)
+  {
+    auto i = map_.find(id);
+    return i==map_.end() ? 0 : i->second;
+  }
+  void erase(T *t)
+  {
+    map_.erase(t->tid);
+    delete t;
+  }
+  template<typename... A> T *create(A... a)
+  {
+    T *t = new T(++tid_ ? tid_ : ++tid_, a...);
+    return map_[t->tid] = t;
   }
 };
 
