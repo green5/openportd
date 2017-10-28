@@ -24,6 +24,7 @@ using STD_H::format;
 using STD_H::str;
 using STD_H::unstr;
 using STD_H::dump;
+using STD_H::Line;
 
 #ifdef USE_LEV
 #include "lev.h"
@@ -78,7 +79,7 @@ struct EvSocket
 {
   struct Parent
   {
-    virtual void onerror(int fd,const STD_H::Line &line)
+    virtual void onerror(int fd,const Line &line)
     {
       plog(errno,"%s fd=%s",line.C_STR(),NAME(fd));
     }
@@ -114,7 +115,7 @@ struct EvSocket
     //plog("close %d=%s",io.fd,NAME(io.fd));
     close(io.fd);
   }
-  int fd()
+  int fd() const
   {
     return io.fd;
   }
@@ -211,7 +212,7 @@ struct EvSocket
     return *this;
   }
   static ev::default_loop loop_;
-  static void loop(const string &cmd,const STD_H::Line &line)
+  static void loop(const string &cmd,const Line &line)
   {
     dlog("%s from %s",cmd.c_str(),line.C_STR());
     if(cmd=="exit") exit(1);
@@ -435,7 +436,7 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
     Packet packet;
     while(Packet::unpack(read_buffer,packet)) read(packet);
   }
-  virtual void onerror(int fd,const STD_H::Line &line)
+  virtual void onerror(int fd,const Line &line)
   {
     plog("%s: rpc error fd=%s",line.C_STR(),NAME(fd));
     parent->finish(__Line__);

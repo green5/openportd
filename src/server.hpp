@@ -14,16 +14,15 @@ template<typename P> struct TPub : TSocket::Parent
     Packet::c c((int64_t)this,dport);
     parent->rpc.call('c',c,[this](Packet &reply){
       auto c = reply.cast<Packet::c>();
-      if(c.addr==0) parent->remove(this);
+      if(c.addr==0) parent->remove(this,__Line__);
       remote = c.addr;
       dlog("%p(%p): remote %s",this,(void*)remote,NAME(port.fd()));
       flush();
     });
   }
-  ~TPub()
+  string str() const
   {
-    //parent->rpc.send(remote,'e',"");
-    dlog("%p(%p): %s in=%ld out=%ld",this,(void*)remote,NAME(port.fd()),in,out);
+    return format("%p(%p): %s io=%ld,%ld %p",this,(void*)remote,NAME(port.fd()),in,out,&port);
   }
   string write_data;
   void flush()
@@ -48,7 +47,7 @@ template<typename P> struct TPub : TSocket::Parent
     if(n==0)
     { 
       dlog("EOF fd=%s",NAME(fd));
-      parent->remove(fd);
+      parent->remove(this,__Line__);
       return;
     }
     flush();
@@ -61,7 +60,7 @@ template<typename P> struct TClient : TSocket::Parent
   typedef TChannel<TClient> Channel;
   public:
   P *parent;
-  map<int,Pub*> pub;
+  map<Pub*,int> pub_;
   map<int,TSocket*> listPort; /// to pub?
   map<int,int> port2;
   Channel rpc;
@@ -82,12 +81,6 @@ template<typename P> struct TClient : TSocket::Parent
   }
   void list_start(int port) 
   {
-    auto i = pub.find(port);
-    if(i!=pub.end())
-    {
-      delete i->second;
-      pub.erase(i);        
-    }
     TSocket *so = new TSocket(this);
     struct sockaddr addr = unstr(AF_INET,parent->config.get("port"));
     string config = format("%s:%d",rpc.remote('h').c_str(),port);
@@ -108,7 +101,7 @@ template<typename P> struct TClient : TSocket::Parent
     plog("%s",log.c_str());
     rpc.send('L',log);
   }
-  void finish(const STD_H::Line &line,const char *cmd="none")
+  void finish(const Line &line,const char *cmd="none")
   {
     parent->remove(rpc.fd());
     parent->finish(line,cmd);
@@ -120,33 +113,25 @@ template<typename P> struct TClient : TSocket::Parent
   }
   virtual int onlisten(int fd,sockaddr &addr)
   {
-    if(pub.find(fd)!=pub.end()) remove(fd);
     int local = atoi(Socket(fd).local('p').c_str());
     dlog("local=%d",local);
     if(port2.find(local)==port2.end()) return -1;
-    pub[fd] = new Pub(this,fd,port2[local]);
+    Pub *pub = new Pub(this,fd,port2[local]);
+    pub_[pub] = 1;
     return 0;
   }
-  int remove(int fd)
+  Pub *find(Pub *pub)
   {
-    auto i = pub.find(fd);
-    if(i==pub.end())
-    {
-      plog("unregister pub fd=%s",NAME(fd));
-      close(fd);
-    }
-    else
-    {
-      delete i->second;
-      pub.erase(i);
-    }
+    auto i = pub_.find(pub);
+    return i==pub_.end()?0:i->first;
   }
-  void remove(Pub *pub_)
+  void remove(Pub *pub,const Line &line)
   {
-    for(auto i:pub)
-    {
-      if(i.second==pub_) remove(i.first);
-    }
+    Pub *p = find(pub);
+    dlog("%s %s %p",line.C_STR(),pub->C_STR(),p);
+    //rpc.send(p->remote,'e',"");
+    pub_.erase(p);
+    delete p;
   }
   void onrpc(int type,Packet &packet)
   {
@@ -189,16 +174,13 @@ template<typename P> struct TClient : TSocket::Parent
       case 'f':
       case 'e':
       {
-        auto i = std::find_if(pub.begin(),pub.end(),[&packet](const std::pair<int,Pub*> &a)
-        {
-          return packet.head.remote==(int64_t)a.second;
-        });
-        if(i==pub.end())
+        Pub *pub = find((Pub*)packet.head.remote);
+        if(pub==0)
         {
           plog("fd=%s unknown pub=%p %s",NAME(rpc.fd()),(void*)packet.head.remote,packet.C_STR());
         }
-        else if(type=='e'||type=='f') remove(i->second);
-        else if(type=='d') i->second->write(packet.data);
+        else if(type=='e'||type=='f') remove(pub,__Line__);
+        else if(type=='d') pub->write(packet.data);
         break;
       }
       default:
@@ -228,7 +210,7 @@ struct Server : TSocket::Parent
     mainPort.listen(config.get("port"));
     TSocket::loop("run",__Line__);
   }
-  void finish(const STD_H::Line &line,const char *cmd="break")
+  void finish(const Line &line,const char *cmd="break")
   {
     TSocket::loop(cmd,line);
   }

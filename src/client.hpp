@@ -15,10 +15,9 @@ template<typename P> struct TLoc : TSocket::Parent
     port.connect(h);
     dlog("%p(%p): new loc fd=%s",this,remote,NAME(port.fd()));
   }
-  ~TLoc()
+  string str() const
   {
-    //parent->rpc.send(remote,'f',"");
-    dlog("%p(%p): %s in=%ld out=%ld",this,(void*)remote,NAME(port.fd()),in,out);
+    return format("%p(%p): %s io=%ld,%ld %p",this,(void*)remote,NAME(port.fd()),in,out,&port);
   }
   void write(const string &data)
   {
@@ -47,20 +46,20 @@ template<typename P> struct TLoc : TSocket::Parent
     if(n==0)
     { 
       parent->rpc.send(remote,'e',"");
-      parent->remove(fd);
+      parent->remove(this,__Line__);
       return;
     }
     bool done = false;
     if(lport==80) /// 443
     {
       done = check_http(write_data);
-      if(!done) { dlog("http continue"); return; }
+      if(!done) { dlog("http continue %s",C_STR()); return; }
     }
     flush();
     if(done)
     {
       parent->rpc.send(remote,'e',"");
-      parent->remove(fd);
+      parent->remove(this,__Line__);
       return;
     }
   }
@@ -124,7 +123,7 @@ struct Client : TSocket::Parent
   Config config;
   string buffer;
   Channel rpc;
-  map<int,Loc*> loc;
+  map<Loc*,int> loc_;
   vector<int> ports;
   Client():config("c",{
     {"active","no"},
@@ -143,7 +142,7 @@ struct Client : TSocket::Parent
     }
     TSocket::loop("run",__Line__);
   }
-  virtual void onerror(int fd,const STD_H::Line &line)
+  virtual void onerror(int fd,const Line &line)
   {
     plog(errno,"%s fd=%s",line.str().c_str(),NAME(fd));
     TSocket::loop("break",__Line__);
@@ -151,30 +150,22 @@ struct Client : TSocket::Parent
   void start(int xid,int port)
   {
   }
-  void finish(const STD_H::Line &line,const char *cmd="break")
+  void finish(const Line &line,const char *cmd="break")
   {
     TSocket::loop(cmd,line);
   }
-  int remove(int fd)
+  Loc *find(Loc *loc)
   {
-    auto i = loc.find(fd);
-    if(i==loc.end())
-    {
-      plog("unregister loc fd=%s",NAME(fd));
-      close(fd);
-    }
-    else
-    {
-      delete i->second;
-      loc.erase(i);
-    }
+    auto i = loc_.find(loc);
+    return i==loc_.end()?0:i->first;
   }
-  void remove(Loc *loc_)
+  void remove(Loc *loc,const Line &line)
   {
-    for(auto i:loc)
-    {
-      if(i.second==loc_) remove(i.first);
-    }
+    Loc *p = find(loc);
+    dlog("%s %s %p",line.C_STR(),loc->C_STR(),p);
+    //rpc.send(p->remote,'f',"");
+    loc_.erase(p);
+    delete p;
   }
   void onrpc(int type,Packet &packet)
   {
@@ -194,7 +185,7 @@ struct Client : TSocket::Parent
           }
         }
         Loc *loc = new Loc(this,c.addr,c.port);
-        this->loc[loc->port.fd()] = loc;
+        this->loc_[loc] = 1;
         rpc.reply(packet,Packet::c((int64_t)loc,-2)); ///?-2
         break;
       }
@@ -202,16 +193,13 @@ struct Client : TSocket::Parent
       case 'e':
       case 'f':
       {
-        auto i = std::find_if(loc.begin(),loc.end(),[&packet](const std::pair<int,Loc*> &a)
-        {
-          return packet.head.remote==(int64_t)a.second;
-        });
-        if(i==loc.end()) 
+        Loc *loc = find((Loc*)packet.head.remote);
+        if(loc==0) 
         {
           if(type!='e') plog("fd=%s unknown loc=%p %s",NAME(rpc.fd()),(void*)packet.head.remote,packet.C_STR());
         }
-        else if(type=='e'||type=='f') remove(i->second);
-        else if(type=='d') i->second->write(packet.data);
+        else if(type=='e'||type=='f') remove(loc,__Line__);
+        else if(type=='d') loc->write(packet.data);
         break;
       }
       default:
