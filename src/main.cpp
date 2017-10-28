@@ -77,6 +77,7 @@ void mylog(std::string &t)
   else
   {
     printf("%s\n",t.c_str());
+    fflush(stdout);
   }
 }
 

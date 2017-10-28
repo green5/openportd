@@ -323,9 +323,9 @@ struct Packet
 
 template<typename P> struct TChannel : TSocket, TSocket::Parent
 {
-  typedef std::function<void(Packet&)> ret_t;
   P *parent;
   int xid_;
+  typedef TSocket::Parent* ret_t;
   std::map<int,ret_t> rpc;
   TChannel(P*p):TSocket(this),parent(p),xid_(0)
   {
@@ -356,7 +356,11 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
     io[1].iov_base = (void*)data;
     io[1].iov_len = data ? size : 0;
     ssize_t n = writev(fd(),io,data?2:1);
-    if(n!=head.size) plog(errno,"fd=%s n=%ld v=%ld",NAME(fd()),n,sizeof(head)+size);
+    if(n!=head.size) 
+    {
+      if(errno==EBADF) asm("int $3");
+      plog(errno,"fd=%s n=%ld v=%ld",NAME(fd()),n,sizeof(head)+size);
+    }
   }
   void send(int type,const string &data)
   {
@@ -408,7 +412,7 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
         auto i = rpc.find(packet.head.xid);
         if(i!=rpc.end())
         {
-          i->second(packet);
+          parent->onreply(i->second,packet);
           rpc.erase(i);
         }
         else
@@ -417,7 +421,7 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
       }
       default:
       {
-        parent->onrpc(packet.head.type,packet);
+        parent->onrpc(packet);
         break;
       }
     }
@@ -443,5 +447,76 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
   }
 };
 
+#include <bsd/string.h>
+
+struct http
+{
+  map_t head;
+  string tail;
+  int parse(const string &data)
+  {
+    if(data.size()==0)
+    {
+      return -1;
+    }
+    char *t, *s, *e;
+    s = (char*)data.c_str();
+    e = s + data.size();
+    for(int i=0;s<e;i++,s=t+2)
+    {
+      t = strnstr(s,"\r\n",e-s); //t = strstr(s,"\r\n");
+      if(t==0) return -1;
+      if(t==s) { t += 2; break; }
+      if(i==0)
+      {
+        head["method"] = string(s,0,t-s);
+      }
+      else
+      {
+        char *c = strnstr(s,": ",t-s);
+        if(c==0) return -1;
+        else head[string(s,c-s)] = string(c+2,t-c-2);
+      }
+    }
+    s = (char*)data.c_str();
+    size_t hlen = t - s;
+    size_t tlen = s + data.size() - t;
+    tail = string(t,tlen);
+    if(tlen==0) return 1; // done, only headers
+    if(head.find("Content-Encoding")!=head.end() && head["Content-Encoding"]=="gzip")
+    {
+      // Content-Encoding: gzip (size[4] + "\n" + h[8] + ...)
+      size_t nz = strtol(string(t,4).c_str(),NULL,16) + 4 + 1 + 8;
+      return nz <= tlen ? 1 : 0;
+    }
+    if(head.find("Content-Length")!=head.end())
+    {
+      // tail[Content-Length]
+      size_t nz = strtol(head["Content-Length"].c_str(),NULL,10);
+      return nz <= tlen ? 1 : 0;
+    }
+    plog("data=%ld tail=%d",data.size(),tlen);
+    return 0;
+  }
+  string str() const
+  {
+    string ret;
+    string eos = "\r\n";
+    auto i = head.find("method");
+    if(i==head.end())
+    {
+      PLOG;
+      return ret;
+    }
+    ret += i->second + eos;
+    for(auto &i:head) 
+    {
+      ret += i.first + ": " + i.second + eos;
+    }    
+    ret += eos;    
+    ret += tail;
+    return ret;
+  }
+};
+
 #endif
-                       

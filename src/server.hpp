@@ -12,17 +12,19 @@ template<typename P> struct TPub : TSocket::Parent
     port.connect(fd);
     dlog("%p: new pub fd=%s",this,NAME(port.fd()));
     Packet::c c((int64_t)this,dport);
-    parent->rpc.call('c',c,[this](Packet &reply){
-      auto c = reply.cast<Packet::c>();
-      if(c.addr==0) parent->remove(this,__Line__);
-      remote = c.addr;
-      dlog("%p(%p): remote %s",this,(void*)remote,NAME(port.fd()));
-      flush();
-    });
+    parent->rpc.call('c',c,this);
+  }
+  virtual void onreply(Packet &reply)
+  {
+    auto c = reply.cast<Packet::c>();
+    if(c.addr==0) parent->remove(this,__Line__);
+    remote = c.addr;
+    dlog("%p(%p): remote %s",this,(void*)remote,NAME(port.fd()));
+    flush();
   }
   string str() const
   {
-    return format("%p(%p): %s io=%ld,%ld %p",this,(void*)remote,NAME(port.fd()),in,out,&port);
+    return format("%p(%p): %s io=%ld,%ld so=%p",this,(void*)remote,NAME(port.fd()),in,out,&port);
   }
   string write_data;
   void flush()
@@ -114,8 +116,11 @@ template<typename P> struct TClient : TSocket::Parent
   virtual int onlisten(int fd,sockaddr &addr)
   {
     int local = atoi(Socket(fd).local('p').c_str());
-    dlog("local=%d",local);
-    if(port2.find(local)==port2.end()) return -1;
+    if(port2.find(local)==port2.end()) 
+    {
+      plog("local=%d",local);
+      return -1;
+    }
     Pub *pub = new Pub(this,fd,port2[local]);
     pub_[pub] = 1;
     return 0;
@@ -128,13 +133,26 @@ template<typename P> struct TClient : TSocket::Parent
   void remove(Pub *pub,const Line &line)
   {
     Pub *p = find(pub);
-    dlog("%s %s %p",line.C_STR(),pub->C_STR(),p);
+    if(DEBUG||(p&&p->remote==0)) plog("%s %s %p",line.C_STR(),pub->C_STR(),p);
     //rpc.send(p->remote,'e',"");
     pub_.erase(p);
     delete p;
   }
-  void onrpc(int type,Packet &packet)
+  void onreply(TSocket::Parent* pub,Packet &packet)
   {
+    Pub *p = find((Pub*)pub);
+    if(p) 
+    {
+      p->onreply(packet);
+    }
+    else
+    {
+      plog("%p fd=%s unknown reply %s",pub,NAME(rpc.fd()),packet.C_STR());
+    }
+  }
+  void onrpc(Packet &packet)
+  {
+    int type = packet.head.type;
     if(type=='b')
     {
       auto b = packet.cast<Packet::b>();

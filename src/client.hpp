@@ -1,5 +1,4 @@
 #include "main.h"
-#include <bsd/string.h>
 
 template<typename P> struct TLoc : TSocket::Parent
 {
@@ -17,7 +16,7 @@ template<typename P> struct TLoc : TSocket::Parent
   }
   string str() const
   {
-    return format("%p(%p): %s io=%ld,%ld %p",this,(void*)remote,NAME(port.fd()),in,out,&port);
+    return format("%p(%p): %s io=%ld,%ld so=%p",this,(void*)remote,NAME(port.fd()),in,out,&port);
   }
   void write(const string &data)
   {
@@ -49,70 +48,38 @@ template<typename P> struct TLoc : TSocket::Parent
       parent->remove(this,__Line__);
       return;
     }
-    bool done = false;
-    if(lport==80) /// 443
+    if(lport==80)
     {
-      done = check_http(write_data);
-      if(!done) { dlog("http continue %s",C_STR()); return; }
-    }
-    flush();
-    if(done)
-    {
-      parent->rpc.send(remote,'e',"");
-      parent->remove(this,__Line__);
-      return;
-    }
-  }
-  bool check_http(const string &data)
-  {
-    if(data.size()==0)
-    {
-      plog("NULL");
-      return false;
-    }
-    map_t h;
-    char *t, *s, *e;
-    s = (char*)data.c_str();
-    e = s + data.size();
-    for(int i=0;s<e;i++,s=t+2)
-    {
-      t = strnstr(s,"\r\n",e-s); //t = strstr(s,"\r\n");
-      if(t==0) { PLOG; break; }
-      if(t==s) { t += 2; break; }
-      if(i==0)
+      http h;     
+      int done = h.parse(write_data);
+#if 0
+      if(done==1)
       {
-        h["method"] = string(s,0,t-s);
+        flush();
+        parent->rpc.send(remote,'e',"");
+        parent->remove(this,__Line__);
+        return;
       }
-      else
+#endif
+      if(done==0||done==1)
       {
-        char *c = strnstr(s,": ",t-s);
-        if(c==0) PLOG;
-        else h[string(s,c-s)] = string(c+2,t-c-2);
-        //h.push_back(string(s,0,t-s));
+        if(1==1 && h.head.find("Connection")==h.head.end())
+        {
+          h.head["Connection"] = "close";
+        }
+        else
+        {
+          for(auto &i:h.head) plog("%s: %s",i.first.c_str(),i.second.c_str());
+          h.head["Connection"] = "close";
+        }
+        write_data = h.str();
       }
+      flush();
     }
-    s = (char*)data.c_str();
-    size_t hlen = t - s;
-    size_t tlen = s + data.size() - t;
-    // tail = Content-Length (if there is)
-    // Content-Encoding: gzip (size[4] + "\n" + h[8] + ...)
-    // data[Content-Length]
-    if(tlen==0) return true; // only headers
-    if(h["Content-Encoding"]=="gzip")
+    else
     {
-      size_t nz = strtol(string(t,4).c_str(),NULL,16) + 4 + 1 + 8;
-      //if(nz!=tlen) plog("nz=%d tail=%ld %s",nz,tlen,dump(data).c_str());
-      return nz <= tlen;
+      flush();
     }
-    if(h["Content-Length"].size())
-    {
-      size_t nz = strtol(h["Content-Length"].c_str(),NULL,10);
-      //if(nz!=tlen) plog("nz=%d tail=%ld %s",nz,tlen,dump(data).c_str());
-      return nz <= tlen;
-    }
-    plog("data=%ld tail=%d",data.size(),tlen);
-    for(auto &i:h) plog("%s: %s",i.first.c_str(),i.second.c_str());
-    return false;
   }
 };
 
@@ -167,8 +134,13 @@ struct Client : TSocket::Parent
     loc_.erase(p);
     delete p;
   }
-  void onrpc(int type,Packet &packet)
+  void onreply(TSocket::Parent* p,Packet &packet)
   {
+    plog("fd=%s unknown reply %s",NAME(rpc.fd()),packet.C_STR());
+  }
+  void onrpc(Packet &packet)
+  {
+    int type = packet.head.type;
     switch(type)
     {
       case 'c':
