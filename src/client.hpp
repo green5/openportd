@@ -20,11 +20,28 @@ template<typename P> struct TLoc : TSocket::Parent
   }
   void write(const string &data)
   {
-    if(lport==80) 
+    if(data.size()==0)
     {
-      //check_http(data);
+      PLOG;
+      return;
     }
     in += data.size();
+    if(lport==80)
+    {
+      http h;
+      int done = h.parse(data);
+      if(done==0||done==1)
+      {
+        h.set("Connection","close");     
+        port.write(h.data());
+        return;
+      }
+      else
+      {
+        plog("%s",h.str().c_str());
+        plog("%s",dump(data).c_str());
+      }
+    }
     port.write(data);
   }
   string write_data;
@@ -48,38 +65,21 @@ template<typename P> struct TLoc : TSocket::Parent
       parent->remove(this,__Line__);
       return;
     }
+#if 0
     if(lport==80)
     {
-      http h;     
+      http h;
       int done = h.parse(write_data);
-#if 0
-      if(done==1)
-      {
-        flush();
-        parent->rpc.send(remote,'e',"");
-        parent->remove(this,__Line__);
-        return;
-      }
-#endif
       if(done==0||done==1)
       {
-        if(1==1 && h.head.find("Connection")==h.head.end())
-        {
-          h.head["Connection"] = "close";
-        }
-        else
-        {
-          for(auto &i:h.head) plog("%s: %s",i.first.c_str(),i.second.c_str());
-          h.head["Connection"] = "close";
-        }
-        write_data = h.str();
+        h.set("Connection","close");     
+        write_data = h.data();
       }
       flush();
+      return;
     }
-    else
-    {
-      flush();
-    }
+#endif
+    flush();
   }
 };
 

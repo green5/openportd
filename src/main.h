@@ -453,6 +453,15 @@ struct http
 {
   map_t head;
   string tail;
+  string get(const char *a)
+  {
+    auto i = head.find(a);
+    return i == head.end() ? "" : i->second;
+  }
+  void set(const char *a,const char *b)
+  {
+    head[a] = b;
+  }  
   int parse(const string &data)
   {
     if(data.size()==0)
@@ -498,7 +507,7 @@ struct http
     plog("data=%ld tail=%d",data.size(),tlen);
     return 0;
   }
-  string str() const
+  string data() const
   {
     string ret;
     string eos = "\r\n";
@@ -515,6 +524,13 @@ struct http
     }    
     ret += eos;    
     ret += tail;
+    return ret;
+  }
+  string str() const
+  {
+    string ret;
+    for(auto &i:head) ret += i.first + ": " + i.second + "\n";
+    ret += format("tail: %ld,%ld",head.size(),tail.size());
     return ret;
   }
 };

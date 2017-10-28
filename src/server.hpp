@@ -34,9 +34,12 @@ template<typename P> struct TPub : TSocket::Parent
       dlog("null remote fd=%s data=%ld",NAME(port.fd()),write_data.size());
       return;
     }
-    out += write_data.size();
-    parent->rpc.send(remote,'d',write_data);
-    write_data.clear();
+    if(write_data.size())
+    {
+      out += write_data.size();
+      parent->rpc.send(remote,'d',write_data);
+      write_data.clear();
+    }
   }
   void write(const string &data)
   {
@@ -46,13 +49,13 @@ template<typename P> struct TPub : TSocket::Parent
   virtual void onread(int fd)
   {
     int n = TSocket::recv(fd,write_data);
+    flush();
     if(n==0)
     { 
       dlog("EOF fd=%s",NAME(fd));
       parent->remove(this,__Line__);
       return;
     }
-    flush();
   }
 };
 
