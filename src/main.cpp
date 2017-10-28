@@ -79,25 +79,6 @@ void mylog(std::string &t)
   }
 }
 
-string name_(int fd,int which)
-{
-  string ret;
-  struct sockaddr name;
-  socklen_t len;
-  if(which&1)
-  {
-    len = sizeof(name);
-    ret += getsockname(fd,&name,&len) == 0 ? str(name) : "ERR";
-  }
-  if(which&2)
-  {
-    len = sizeof(name);
-    ret += ",";
-    ret += getpeername(fd,&name,&len) == 0 ? str(name) : "ERR";
-  }
-  return "[" + ret + "]";
-}
-
 void setport(struct sockaddr &a,int port)
 {
   if(a.sa_family==AF_INET) ((sockaddr_in&)a).sin_port = htons(port);

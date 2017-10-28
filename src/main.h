@@ -10,11 +10,9 @@ void mylog(std::string&);
 #include "std.h"
 #include "std/str.h"
 
-string name_(int fd,int which=3);
 void setport(struct sockaddr&,int port);
 int getport(struct sockaddr &a);
 
-#define NAME(fd) name_(fd).c_str()
 #define C_STR str().c_str
 #define PCHAR(c) ((c<=' '||c>=127)?'.':c)
 extern int DEBUG;
@@ -53,6 +51,26 @@ struct Socket
     socklen_t len = sizeof(name);
     if(getpeername(fd,&name,&len) == 0) return str(name,flag);
     return string();
+  }
+#define NAME(fd) Socket(fd).name(3).c_str()
+  string name(int which)
+  {
+    string ret;
+    if(which&1) ret += local();
+    if(which&2) ret += "," + remote();
+    return format("[%d,%s]",fd,ret.c_str());
+  }
+  int get(int name)
+  {
+    int ret = -1;
+    socklen_t n;
+    n = sizeof(ret);
+    if(getsockopt(fd,SOL_SOCKET,name,&ret,&n)==-1) PERR;
+    return ret;
+  }
+  void set(int name,int val)
+  {
+    if(setsockopt(fd,SOL_SOCKET,name,&val,sizeof(val))==-1) PERR;
   }
 };
 
@@ -145,16 +163,16 @@ struct EvSocket
     if(s==-1) PEXIT;
     return s;
   }
-  static void setoption(int s)
+  virtual void setoption(int fd)
   {
-    int opt = 1;
-    if(setsockopt(s,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt))==-1) PERR;
-    //if(fcntl(s,F_SETFL,fcntl(s,F_GETFL,0)|O_NONBLOCK)==-1) PERR; 
+    //if(fcntl(fd,F_SETFL,fcntl(fd,F_GETFL,0)|O_NONBLOCK)==-1) PERR; 
   }
   EvSocket& listen(sockaddr &addr,int backlog)
   {
     int s = socket_(&addr);
+    int opt = 1;
     setoption(s);
+    if(setsockopt(s,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt))==-1) PERR;
     if(bind(s,&addr,sizeof(addr))==-1)
     {
       pexit(errno,"%s",str(addr).c_str());
@@ -189,9 +207,9 @@ struct EvSocket
       PEXIT;
     }
     setoption(s);    
-    //sleep(3);
-    //plog("%s: connect to fd=%s",str(addr).c_str(),NAME(s));
-    return connect(s);
+    io.set<EvSocket,&EvSocket::on_connect_socket>(this);
+    io.start(s,ev::READ);
+    return *this;
   }
   static ev::default_loop loop_;
   static void loop(const string &cmd,const STD_H::Line &line)
@@ -220,7 +238,11 @@ struct EvSocket
   void write(const string &a)
   {
     ssize_t n = ::write(io.fd,a.c_str(),a.size());
-    if(n!=a.size()) parent->onerror(io.fd,__Line__);
+    if(n!=a.size()) 
+    {
+      perr(errno,"n=%ld a=%ld",n,a.size());
+      parent->onerror(io.fd,__Line__);
+    }
   }
   void printf(const char *fmt,...)
   {
@@ -305,7 +327,20 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
   P *parent;
   int xid_;
   std::map<int,ret_t> rpc;
-  TChannel(P*p):TSocket(this),parent(p),xid_(0){}
+  TChannel(P*p):TSocket(this),parent(p),xid_(0)
+  {
+  }
+  virtual void setoption(int fd)
+  {
+    if(fcntl(fd,F_SETFL,fcntl(fd,F_GETFL,0)|O_NONBLOCK)==-1) PERR; 
+    int r1 = Socket(fd).get(SO_RCVBUF);
+    int s1 = Socket(fd).get(SO_SNDBUF);
+    //Socket(fd).set(SO_SNDBUF,2000000);
+    //Socket(fd).set(SO_RCVBUF,2000000);
+    int r2 = Socket(fd).get(SO_RCVBUF);
+    int s2 = Socket(fd).get(SO_SNDBUF);
+    plog("rs_buf(%s) %d,%d -> %d,%d",NAME(fd),r1,s1,r2,s2);
+  }
   void send(int type,const void *data=0,int size=0,int xid=0,int64_t remote=0)
   {
     Header head;
@@ -393,7 +428,7 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
     if(n==0)
     {
       //if(!(errno==ENOTCONN))
-      dlog(errno,"fd=%s",NAME(fd));
+      plog(errno,"fd=%s",NAME(fd));
       //if(errno!=EINPROGRESS)
       parent->finish(__Line__);
       return;
