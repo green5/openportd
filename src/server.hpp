@@ -3,12 +3,12 @@
 template<typename P> struct TPub : TSocket::Parent
 {
   tid_t tid;
+  tid_t remote;
   P *parent;
   TSocket port;
-  tid_t remote;
   int lport;
   size_t in,out;
-  TPub(tid_t tid_,P *p,int fd,int lport_):tid(tid_),parent(p),port(this),remote(0),lport(lport_),in(0),out(0)
+  TPub(tid_t tid_,P *p,int fd,int lport_):tid(tid_),remote(0),parent(p),port(this),lport(lport_),in(0),out(0)
   {
     port.connect(fd);
     dlog("%s",C_STR());
@@ -121,7 +121,7 @@ template<typename P> struct TClient : TSocket::Parent
     listPort[so->fd()] = so;
     int aport = getport(addr);
     port2[aport] = port;
-    string http = port==80 ? "http://" : "";
+    string http = port==80 ? "http://" : port==443 ? "https://" : "";
     string log = format("listen on %s%s:%d for %d",http.c_str(),ext_ip.c_str(),aport,port);
     plog("%s",log.c_str());
     rpc.send(0,'L',log);
