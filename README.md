@@ -10,17 +10,16 @@ Yet another tcp proxy
 
 1. Start on main server, 40001 can be any port admissible:
 
-    make install;
-    /usr/local/bin/openportd s.active=yes s.port=127.0.0.1:40001
+    make install &&
+    /usr/local/bin/openportd --s s.port=0.0.0.0:40001
    
 2. Start on client:
 
-    make install;
-    /usr/local/bin/openportd c.active=yes c.port=Main-Server-Ip:40001 c.ports=22,80
+    make install &&
+    /usr/local/bin/openportd c.port=Main-Server-Ip:40001 c.ports=22,80,443
 
 3. Test, Port - port allocated by server, see server or client log:
 
     ssh -p Port Main-Server-Ip
   
-
-4. Check security (access to local service from localhost)
+4. Check security (access to local services from 127.0.0.2)

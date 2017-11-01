@@ -18,17 +18,20 @@ openportd: $(SRC)
 f:
 	g++ -g -O0 ${CXXFLAGS} -o openportd src/main.cpp ${LIB}
 
-s: openportd
-	$${x} ./openportd s.active=yes c.active=no --debug=$${z}
+s: openportd kill
+	$${x} ./openportd --s s.port=0.0.0.0:40001 --debug=$${z}
 
-ss: openportd
-	$${x} ./openportd s.active=yes c.active=no --debug=$${z}
+b: kill openportd
+	./openportd --s --b s.port=0.0.0.0:40001
+
+ss: openportd kill
+	$${x} ./openportd --s s.port=0.0.0.0:40001 --debug=$${z}
 
 c: openportd
-	$${x} ./openportd s.active=no c.active=yes --debug=$${z} c.ports=22,80,443 c.port=localhost:40001
+	$${x} ./openportd --debug=$${z} c.ports=22,80,443 c.port=u7:40001
 
 cc: openportd
-	$${x} ./openportd s.active=no c.active=yes --debug=$${z} c.ports=22,80,443 c.port=mp:40001
+	$${x} ./openportd --debug=$${z} c.ports=22,80,443 c.port=mp:40001
 
 ed:
 	nano ~/.openportd.conf
@@ -55,7 +58,5 @@ pull:
 	git pull
 	make
 
-b:	all
+kill:
 	(pkill -e openportd; exit 0)
-	./openportd s.active=yes c.active=no --b
-

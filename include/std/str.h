@@ -339,16 +339,16 @@ namespace STR_H_ {
     const unsigned char *s = (const unsigned char*)t;
     ret += format("%p[len=%ld=%lxh]:",s,size,size);
     if(size) ret += "\n";
-    for(unsigned n=0;n<size;n+=16)
+    for(size_t n=0;n<size;n+=16)
     {
       if(n) ret += "\n";
-      ret += format("%04x  ",n);
-      for(unsigned i=n;i<(n+16);i++)
+      ret += format("%04lx",n);
+      for(size_t i=n;i<(n+16);i++)
       {
         ret += format(i<size?" %02x":"   ",s[i]);
       }
       ret += "  ";
-      for(unsigned i=n;i<(n+16);i++)
+      for(size_t i=n;i<(n+16);i++)
       {
         ret += format(i<size?"%c":" ",(s[i]>=' '&&s[i]<='~')?s[i]:'.');
       }

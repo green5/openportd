@@ -53,6 +53,8 @@ template<typename P> struct TPub : TSocket::Parent
     if(write_data.size()==0)
     { 
       dlog("EOF fd=%s %s",NAME(fd),C_STR());
+      if(remote) parent->rpc.send(remote,'e',"");
+      remote = 0; // forget remote
       parent->remove(this,__Line__);
       return;
     }
@@ -87,7 +89,7 @@ template<typename P> struct TClient : TSocket::Parent
   P *parent;
   Map<Pub> map_;
   map<int,TSocket*> listPort; /// to pub?
-  map<int,int> port2;
+  map<int,int> port2_;
   Channel rpc;
   bool auth;
   public:
@@ -120,7 +122,7 @@ template<typename P> struct TClient : TSocket::Parent
     dlog("open list %d=%s",so->io.fd,NAME(so->io.fd));
     listPort[so->fd()] = so;
     int aport = getport(addr);
-    port2[aport] = port;
+    port2_[aport] = port;
     string http = port==80 ? "http://" : port==443 ? "https://" : "";
     string log = format("listen on %s%s:%d for %d",http.c_str(),ext_ip.c_str(),aport,port);
     plog("%s",log.c_str());
@@ -136,16 +138,21 @@ template<typename P> struct TClient : TSocket::Parent
     plog("list error fd=%s",NAME(fd));
     finish(__Line__);
   }
+  int port2(int local)
+  {
+    auto i = port2_.find(local);
+    return i==port2_.end() ? 0 : i->second;
+  }
   virtual int onlisten(int fd,sockaddr &addr)
   {
     int local = atoi(Socket(fd).local('p').c_str());
-    if(port2.find(local)==port2.end()) 
+    if(port2(local)==0) 
     {
       plog("local=%d",local);
       return -1;
     }
-    Pub *pub = map_.create(this,fd,port2[local]);
-    /// и все?
+    Pub *pub = map_.create(this,fd,port2_[local]);
+    /// i vse?
     return 0;
   }
   void remove(Pub *pub,const Line &line)
@@ -154,7 +161,7 @@ template<typename P> struct TClient : TSocket::Parent
     //rpc.send(pub->remote,'e',"");
     map_.erase(pub);
   }
-  void onrpc(Packet &packet)
+  void onrpc(int fd,Packet &packet)
   {
     int type = packet.head.type;
     if(type=='b')
@@ -200,7 +207,8 @@ template<typename P> struct TClient : TSocket::Parent
         Pub *pub = map_.find(packet.head.to);
         if(pub==0)
         {
-          if(type!='e') perr("fd=%s unknown pub %s",NAME(rpc.fd()),packet.C_STR());
+          if(type=='e') break;
+          dlog("fd=%s unknown pub %s",NAME(rpc.fd()),packet.str(0).c_str());
         }
         else if(type=='e'||type=='f') remove(pub,__Line__);
         else if(type=='d') pub->write(packet.data);
@@ -222,7 +230,6 @@ struct Server : TSocket::Parent
   Config config;
   map<int,Client*> client;
   Server():config("s",{
-    {"active","no"},
     {"port","0.0.0.0:40001"},
   })
   {

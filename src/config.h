@@ -125,8 +125,6 @@ struct Config
         }
       }
     }
-    data.set("s","active","no");
-    data.set("c","active","no");
     data.read();
     for(int i=1;i<ac;i++)
     {

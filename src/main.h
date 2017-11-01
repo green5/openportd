@@ -18,6 +18,7 @@ int getport(struct sockaddr &a);
 extern int DEBUG;
 static const string null;
 extern string ext_ip;
+extern int sosync;
 
 typedef std::map<string,string> map_t;
 using STD_H::format;
@@ -165,7 +166,7 @@ struct EvSocket
   }
   virtual void setoption(int fd)
   {
-    //if(fcntl(fd,F_SETFL,fcntl(fd,F_GETFL,0)|O_NONBLOCK)==-1) PERR; 
+    if(!sosync && fcntl(fd,F_SETFL,fcntl(fd,F_GETFL,0)|O_NONBLOCK)==-1) PERR; 
   }
   EvSocket& listen(sockaddr &addr,int backlog)
   {
@@ -197,14 +198,23 @@ struct EvSocket
     io.start(s,ev::READ);
     return *this;
   }
-  EvSocket& connect(const string &port)
+  EvSocket& connect(const string &port,const string &sport=string())
   {
     struct sockaddr addr = unstr(AF_INET,port);
     int s = socket_(&addr); 
+    if(sport.size())
+    {
+      struct sockaddr addr = unstr(AF_INET,sport);
+      if(bind(s,&addr,sizeof(addr))==-1)
+      {
+        pexit(errno,"%s",str(addr).c_str());
+      }
+    }
     if(::connect(s,&addr,sizeof(addr))==-1) 
     {
       //if(!(errno==EINPROGRESS)) 
-      PEXIT;
+      perr(errno,"%s",str(addr).c_str());
+      loop("exit",__Line__);
     }
     setoption(s);    
     io.set<EvSocket,&EvSocket::on_connect_socket>(this);
@@ -271,7 +281,7 @@ typedef int tid_t;
 struct Header
 {
   unsigned size;
-  int type;
+  char type,sign;
   tid_t fr,to;
   string str() const
   {
@@ -289,14 +299,16 @@ struct Packet
   {
     if(buf.size()<sizeof(head)) return 0;
     packet.head = *(Header*)buf.c_str();
+    if(packet.head.sign!='p') return -1;
     if(buf.size()<packet.head.size) return 0;
     packet.data = buf.substr(sizeof(head),packet.head.size-sizeof(head));
     buf = buf.substr(packet.head.size); // fixs, optimize later
     return 1;
   }
-  string str() const
+  string str(int v=0) const
   {
-    return format("%s data=%ld+%ld",head.C_STR(),sizeof(head),data.size());
+    if(v==0) return format("%s data=%ld+%ld",head.C_STR(),sizeof(head),data.size());
+    return format("%s data=%ld+%ld%s",head.C_STR(),sizeof(head),data.size(),dump(data).c_str());
   }
   template<typename T> T& cast()
   {
@@ -330,7 +342,7 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
   }
   virtual void setoption(int fd)
   {
-    //if(fcntl(fd,F_SETFL,fcntl(fd,F_GETFL,0)|O_NONBLOCK)==-1) PERR; 
+    TSocket::setoption(fd);
     int r1 = Socket(fd).get(SO_RCVBUF);
     int s1 = Socket(fd).get(SO_SNDBUF);
     Socket(fd).set(SO_SNDBUF,1000000);
@@ -344,6 +356,7 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
     Header head;
     head.size = sizeof(head) + size;
     head.type = type;
+    head.sign = 'p';
     head.fr = fr;
     head.to = to;
     if(DEBUG==2) plog("[%s] size=%d",head.C_STR(),size);
@@ -381,7 +394,7 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
   {
     io.set(write_queue.empty()?ev::READ:ev::READ|ev::WRITE);
   }
-  void read(Packet &packet)
+  void read_(int fd,Packet &packet)
   {
     if(DEBUG==2) plog("[%s]",packet.C_STR());
     if(DEBUG==3) plog("[%s]%s",packet.C_STR(),dump(packet.data).c_str());
@@ -402,12 +415,12 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
       {
         auto t = parent->map_.find(packet.head.to);
         if(t) t->onreply(packet);
-        else plog("fd=%s unknown reply %s",NAME(fd()),packet.C_STR());
+        else plog("fd=%s unknown reply %s",NAME(this->fd()),packet.C_STR());
         break;
       }
       default:
       {
-        parent->onrpc(packet);
+        parent->onrpc(fd,packet);
         break;
       }
     }
@@ -417,14 +430,21 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
     size_t n = TSocket::recv(fd, read_buffer);
     if(n==0)
     {
-      //if(!(errno==ENOTCONN))
-      plog(errno,"fd=%s",NAME(fd));
-      //if(errno!=EINPROGRESS)
+      //if(errno==ENOTCONN) errno = 0;
+      //if(errno==EINPROGRESS) errno = 0;
+      //if(errno==ECHILD) errno = 0;
+      if(errno) plog(errno,"fd=%s",NAME(fd));
       parent->finish(__Line__);
       return;
     }
     Packet packet;
-    while(Packet::unpack(read_buffer,packet)) read(packet);
+    int x;
+    while((x=Packet::unpack(read_buffer,packet))==1) read_(fd,packet);
+    if(x==-1)
+    {
+      plog("fd=%s bad sign",NAME(fd));
+      parent->finish(__Line__);
+    }
   }
   virtual void onerror(int fd,const Line &line)
   {
@@ -518,6 +538,11 @@ struct http
     for(auto &i:head) ret += i.first + ": " + i.second + "\n";
     ret += format("tail: %ld,%ld",head.size(),tail.size());
     return ret;
+  }
+  void log(const string &h) const
+  {
+    for(auto &i:head) plog("%s %s: %s",h.c_str(),i.first.c_str(),i.second.c_str());
+    plog("%s tail: %ld,%ld",h.c_str(),head.size(),tail.size());
   }
 };
 

@@ -10,8 +10,7 @@ template<typename P> struct TLoc : TSocket::Parent
   size_t in,out;
   TLoc(tid_t tid_,P *p,tid_t fr,int port_):tid(tid_),remote(fr),parent(p),port(this),lport(port_),in(0),out(0)
   {
-    string h = format("localhost:%d",lport); /// bind local addr to 127.0.0.2
-    port.connect(h);
+    port.connect(format("127.0.0.1:%d",lport),"127.0.0.2");
     dlog("%s",C_STR());
   }
   string str() const
@@ -71,9 +70,8 @@ struct Client : TSocket::Parent
   vector<int> ports;
   string buffer;
   Client():config("c",{
-    {"active","no"},
     {"port","127.0.0.1:40001"},
-    {"ports","22,80"},
+    {"ports","22,80,443"},
   }),rpc(this)      
   {
     for(auto p:STD_H::split(config.get("ports").c_str(),",")) ports.push_back(atoi(p.c_str()));
@@ -105,7 +103,7 @@ struct Client : TSocket::Parent
     //rpc.send(loc->remote,'f',"");
     map_.erase(loc);
   }
-  void onrpc(Packet &packet)
+  void onrpc(int fd,Packet &packet)
   {
     int type = packet.head.type;
     switch(type)
@@ -134,7 +132,8 @@ struct Client : TSocket::Parent
         Loc *loc = map_.find(packet.head.to);
         if(loc==0) 
         {
-          if(type!='e') perr("fd=%s unknown loc %s",NAME(rpc.fd()),packet.C_STR());
+          if(type=='e') break;
+          dlog("fd=%s unknown loc %s",NAME(rpc.fd()),packet.C_STR());
         }
         else if(type=='e'||type=='f') remove(loc,__Line__);
         else if(type=='d') loc->write(packet.data);

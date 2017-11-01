@@ -57,15 +57,23 @@ namespace STD_H
     size_t nret = vsnprintf(ret,n,fmt?fmt:"NULL",a);
     return nret;
   }
-  string vformat(const char *fmt,va_list a)
+  string vformat(const char *fmt,va_list a_)
   {
+    va_list a;
     string t;
     t.resize(4096);
-    if(1==1)
+    va_copy(a,a_);
+    size_t n = vformat((char*)t.c_str(),t.size(),fmt,a);
+    if(n<t.size())
     {
-      size_t n = vformat((char*)t.c_str(),t.size(),fmt,a);
       t.resize(n);
+      return t;
     }
+    char *p;
+    va_copy(a,a_);
+    vasprintf(&p,fmt,a);
+    t = string(p);
+    free(p);
     return t;
   }
   string format(const char *fmt,...)

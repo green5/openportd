@@ -24,11 +24,13 @@ string get_ext_ip()
   return "0.0.0.0";
 }
 
+int SERVER = 0;
 int DEBUG = 0;
 int DAEMON = 0;
 int SYSLOG = 0;
 
 string ext_ip;
+int sosync = 0; // for write, read always non-block
 
 int main(int ac,char *av[])
 {
@@ -45,25 +47,33 @@ int main(int ac,char *av[])
       plog("version %d",VERSION);
       pexit("usage: %s [--config=path] title.key=value ... [--b] [--debug]",av[0]);
     }
-    else if(o=="b") DAEMON = true;
+    else if(o=="b") DAEMON = 1;
+    else if(o=="s") SERVER = 1;
     else if(o=="debug") DEBUG = atoi(v.c_str());
-    else if(o=="syslog") SYSLOG = true;
+    else if(o=="syslog") SYSLOG = 1;
     else if(o=="exit") PEXIT;
+    else if(o=="sync") sosync = 1;
     else pexit("bad option: --%s=%s",o.c_str(),v.c_str());
   }
   if(DAEMON)
   {
-    SYSLOG = true;
+    SYSLOG = 1;
     if(daemon(1,0)==-1) PEXIT;
   }
-  if(Config::data.get("s","active")=="yes")
+  for(int i=0;;i++)
   {
-    s::Server().run();
-  }
-  if(Config::data.get("c","active")=="yes")
-  {
-    c::Client().run();
-  }
+    if(SERVER)
+    {
+      s::Server().run();
+    }
+    else
+    {
+      c::Client().run();
+    }
+    if(!DAEMON) break;
+    plog("%s: continue %d",SERVER?"server":"client",i);
+    sleep(SERVER?5:10);
+  } 
   return 0;
 }
 
