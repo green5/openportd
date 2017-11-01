@@ -146,13 +146,14 @@ template<typename P> struct TClient : TSocket::Parent
   virtual int onlisten(int fd,sockaddr &addr)
   {
     int local = atoi(Socket(fd).local('p').c_str());
-    if(port2(local)==0) 
+    int lport = port2(local);
+    if(lport==0) 
     {
       plog("local=%d",local);
       return -1;
     }
-    Pub *pub = map_.create(this,fd,port2_[local]);
-    /// i vse?
+    plog("connect %s to %s:%d",str(addr).c_str(),rpc.remote('h').c_str(),lport);
+    Pub *pub = map_.create(this,fd,lport);
     return 0;
   }
   void remove(Pub *pub,const Line &line)
