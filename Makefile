@@ -44,7 +44,7 @@ apt-install:
 	@[ -r $(TEST) ] || sudo apt-get install $(PKG)
 
 install: all
-	sudo -u root sh -c "mkdir -p /usr/local/bin && cp -va openportd /usr/local/bin"
+	sudo -u root sh -c "mkdir -p /usr/local/bin && make kill && cp -va openportd /usr/local/bin"
 
 clean:
 	rm -f openportd
