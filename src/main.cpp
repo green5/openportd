@@ -30,7 +30,7 @@ int DAEMON = 0;
 int SYSLOG = 0;
 
 string ext_ip;
-int sosync = 0; // for write, read always non-block
+int sosync = 1; // for write, read always non-block
 
 int main(int ac,char *av[])
 {
@@ -52,7 +52,7 @@ int main(int ac,char *av[])
     else if(o=="debug") DEBUG = atoi(v.c_str());
     else if(o=="syslog") SYSLOG = 1;
     else if(o=="exit") PEXIT;
-    else if(o=="sync") sosync = 1;
+    else if(o=="sync") sosync = atoi(v.c_str());
     else pexit("bad option: --%s=%s",o.c_str(),v.c_str());
   }
   if(DAEMON)

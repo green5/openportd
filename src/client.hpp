@@ -10,7 +10,8 @@ template<typename P> struct TLoc : TSocket::Parent
   size_t in,out;
   TLoc(tid_t tid_,P *p,tid_t fr,int port_):tid(tid_),remote(fr),parent(p),port(this),lport(port_),in(0),out(0)
   {
-    port.connect(format("127.0.0.1:%d",lport),"127.0.0.2");
+    string bind = parent->config.get("bind").size() ? parent->config.get("bind") : "127.0.0.2";
+    port.connect(format("127.0.0.1:%d",lport),bind);
     dlog("%s",C_STR());
   }
   string str() const
@@ -72,6 +73,7 @@ struct Client : TSocket::Parent
   Client():config("c",{
     {"port","127.0.0.1:40001"},
     {"ports","22,80,443"},
+    {"bind","127.0.0.2"},
   }),rpc(this)      
   {
     for(auto p:STD_H::split(config.get("ports").c_str(),",")) ports.push_back(atoi(p.c_str()));

@@ -22,4 +22,4 @@ Yet another tcp proxy
 
     ssh -p Port Main-Server-Ip
   
-4. Check security (access to local services from 127.0.0.2)
+4. Check security (add 127.0.0.2 to /etc/hosts.allow, ...)
