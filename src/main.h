@@ -172,6 +172,7 @@ struct EvSocket
   }
   EvSocket& listen(sockaddr &addr,int backlog)
   {
+    start:
     int s = socket_(&addr);
     int opt = 1;
     setoption(s);
@@ -179,7 +180,13 @@ struct EvSocket
     if(bind(s,&addr,sizeof(addr))==-1)
     {
       plog(errno,"%s",str(addr).c_str());
+      if(getport(addr)!=0)
+      {
+        setport(addr,0);
+        goto start;
+      }
       loop("break",__Line__);
+      return *this;
     }
     socklen_t len = sizeof(addr);
     (void)getsockname(s,&addr,&len); // update addr
