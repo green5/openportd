@@ -176,7 +176,8 @@ struct EvSocket
     if(setsockopt(s,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt))==-1) PERR;
     if(bind(s,&addr,sizeof(addr))==-1)
     {
-      pexit(errno,"%s",str(addr).c_str());
+      plog(errno,"%s",str(addr).c_str());
+      loop("break",__Line__);
     }
     socklen_t len = sizeof(addr);
     (void)getsockname(s,&addr,&len); // update addr
