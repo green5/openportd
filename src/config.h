@@ -10,7 +10,7 @@ struct ConfigData
   {
     if(!path.size())
     {
-      path = format("%s/.openportd.conf",getenv("HOME"));
+      path = format("%s/.openportd.conf",getenv("HOME")?getenv("HOME"):"/root");
     }
     FILE *fin = 0;
     if(!fin) fin = fopen(path.c_str(),"r+");

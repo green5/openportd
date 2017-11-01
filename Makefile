@@ -2,7 +2,7 @@ CXXFLAGS += -std=c++11 -pthread -I./include
 
 CXXFLAGS += -DUSE_EV
 LIB += -lev -lbsd
-PKG = libbsd-dev libev-dev
+PKG = libbsd-dev libev-dev g++
 TEST = /usr/include/ev++.h
 
 #CXXFLAGS += -DUSE_LEV
@@ -33,11 +33,14 @@ c: openportd
 cc: openportd
 	$${x} ./openportd --debug=$${z} c.ports=22,80,443 c.port=mp:40001
 
+bb: openportd
+	./openportd --b c.ports=22,80,443 c.port=mp:40001
+
 ed:
 	nano ~/.openportd.conf
 
 apt-install:
-	@[ -r $(TEST) ] || echo "Install $(PKG)"
+	@[ -r $(TEST) ] || echo "Install $(PKG) ..."
 	@[ -r $(TEST) ] || sudo apt-get install $(PKG)
 
 install: all

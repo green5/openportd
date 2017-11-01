@@ -21,7 +21,7 @@
 #include <cxxabi.h>
 #endif
 
-typedef __int128 int128_t;
+///typedef __int128 int128_t;
 
 #define hton16(x) htons(x)
 #define hton32(x) htonl(x)
