@@ -31,7 +31,7 @@ c: openportd
 	$${x} ./openportd --debug=$${z} c.ports=22,80,443 c.port=u7:40001
 
 cc: openportd
-	$${x} ./openportd --debug=$${z} c.ports=22,80,443 c.port=mp:40001
+	$${x} ./openportd --debug=$${z} c.ports=22,80,443 c.port=mp:40001 --noexit
 
 bb: openportd
 	./openportd --b c.ports=22,80,443 c.port=mp:40001

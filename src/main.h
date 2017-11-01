@@ -83,6 +83,7 @@ struct EvSocket
     virtual void onerror(int fd,const Line &line)
     {
       plog(errno,"%s fd=%s",line.C_STR(),NAME(fd));
+      //EvSocket::loop("break",__Line__);
     }
     virtual int onlisten(int fd,sockaddr &addr)
     {
@@ -110,6 +111,7 @@ struct EvSocket
   Parent *parent;
   EvSocket(Parent *p):parent(p)
   {
+    io.fd = -1;
   }
   virtual ~EvSocket()
   {
@@ -215,7 +217,9 @@ struct EvSocket
     {
       //if(!(errno==EINPROGRESS)) 
       perr(errno,"%s",str(addr).c_str());
-      loop("exit",__Line__);
+      parent->onerror(s,__Line__);
+      close(s);
+      return *this;
     }
     setoption(s);    
     io.set<EvSocket,&EvSocket::on_connect_socket>(this);
@@ -350,7 +354,7 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
     Socket(fd).set(SO_RCVBUF,1000000);
     int r2 = Socket(fd).get(SO_RCVBUF);
     int s2 = Socket(fd).get(SO_SNDBUF);
-    plog("rs_buf(%s) %d,%d -> %d,%d",NAME(fd),r1,s1,r2,s2);
+    dlog("rs_buf(%s) %d,%d -> %d,%d",NAME(fd),r1,s1,r2,s2);
   }
   void send_(tid_t fr,tid_t to,int type,const void *data=0,int size=0)
   {
@@ -449,7 +453,7 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
   }
   virtual void onerror(int fd,const Line &line)
   {
-    plog("%s: rpc error fd=%s",line.C_STR(),NAME(fd));
+    dlog("%s: rpc error fd=%s",line.C_STR(),NAME(fd));
     parent->finish(__Line__);
   }
 };

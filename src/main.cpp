@@ -31,6 +31,7 @@ int SYSLOG = 0;
 
 string ext_ip;
 int sosync = 1; // for write, read always non-block
+int noexit = 0;
 
 int main(int ac,char *av[])
 {
@@ -52,12 +53,14 @@ int main(int ac,char *av[])
     else if(o=="debug") DEBUG = atoi(v.c_str());
     else if(o=="syslog") SYSLOG = 1;
     else if(o=="exit") PEXIT;
+    else if(o=="noexit") noexit = 1;
     else if(o=="sync") sosync = atoi(v.c_str());
     else pexit("bad option: --%s=%s",o.c_str(),v.c_str());
   }
   if(DAEMON)
   {
     SYSLOG = 1;
+    noexit = 1;
     if(daemon(1,0)==-1) PEXIT;
   }
   for(int i=0;;i++)
@@ -70,9 +73,9 @@ int main(int ac,char *av[])
     {
       c::Client().run();
     }
-    if(!DAEMON) break;
-    plog("%s: continue %d",SERVER?"server":"client",i);
-    sleep(SERVER?5:10);
+    plog("%s: %s %d",SERVER?"server":"client",noexit?"continue":"exit",i);
+    if(!noexit) break;
+    sleep(SERVER?5:15);
   } 
   return 0;
 }

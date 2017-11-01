@@ -81,7 +81,7 @@ struct Client : TSocket::Parent
   void run()
   {
     rpc.connect(config.get("port"));
-    for(auto port:ports)
+    if(rpc.fd()!=-1) for(auto port:ports)
     {
       rpc.send(0,'b',Packet::b(port,config.get("pw")));
     }
