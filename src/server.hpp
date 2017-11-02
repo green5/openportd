@@ -170,14 +170,12 @@ template<typename P> struct TClient : TSocket::Parent
       if(b.version!=VERSION)
       {
         rpc.send(0,'E',format("bad version, must %d",VERSION));
-        return;
       }
-      if(pw.size() && strcmp(pw.c_str(),b.pw)) 
+      else if(pw.size() && strcmp(pw.c_str(),b.pw)) 
       {
         rpc.send(0,'E',"bad pw");
-        return;
       }
-      auth = true;
+      else auth = true;
     }    
     if(!auth)
     {
