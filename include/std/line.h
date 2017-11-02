@@ -77,10 +77,6 @@ namespace STD_H
     static void vlog(Line &v,const char *fmt, va_list a)
     {
       string t;
-      struct timeval tv;
-      gettimeofday(&tv,NULL);
-      t += format("%ld.%ld",(long)tv.tv_sec,(long)tv.tv_usec);
-      t += v.info==ERR_ ? "?" : ".";
       t += STD_H::format("%s.%d.%s: ",v.file,v.line,v.func);
       t += STD_H::vformat(fmt,a);
       if(v.errorSet) t += STD_H::format(" [%s][%d]",strerror(v.errorCode),v.errorCode);

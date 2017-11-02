@@ -3,7 +3,11 @@ Yet another tcp proxy
 
 ![ScreenShot](https://github.com/green5/openportd/blob/master/README.png?raw=true)
 
-#### Usage
+## Requirements
+
+    Public server
+
+## Usage
 
 0. Get source
     git clone https://github.com/green5/openportd && cd openportd
@@ -23,3 +27,8 @@ Yet another tcp proxy
     ssh -p Port Main-Server-Ip
   
 4. Check security (add 127.0.0.2 to /etc/hosts.allow, ...)
+
+## Tested
+
+    ubuntu-16
+

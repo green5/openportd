@@ -2,7 +2,7 @@ CXXFLAGS += -std=c++11 -pthread -I./include
 
 CXXFLAGS += -DUSE_EV
 LIB += -lev -lbsd
-PKG = libbsd-dev libev-dev g++
+PKG = libbsd-dev libev-dev
 TEST = /usr/include/ev++.h
 
 #CXXFLAGS += -DUSE_LEV

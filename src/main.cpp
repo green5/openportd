@@ -89,7 +89,11 @@ void mylog(std::string &t)
   }
   else
   {
-    printf("%s\n",t.c_str());
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    struct tm tm;
+    localtime_r(&tv.tv_sec,&tm);
+    printf("%02d:%02d:%02d.%d: %s\n",tm.tm_hour,tm.tm_min,tm.tm_sec,(int)tv.tv_usec,t.c_str());
     fflush(stdout);
   }
 }

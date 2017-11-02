@@ -130,6 +130,7 @@ template<typename P> struct TClient : TSocket::Parent
   }
   void finish(const Line &line,const char *cmd="none")
   {
+    plog("%s: [%s]",line.C_STR(),cmd);
     parent->remove(rpc.fd());
     parent->finish(line,cmd);
   }
@@ -147,12 +148,8 @@ template<typename P> struct TClient : TSocket::Parent
   {
     int local = atoi(Socket(fd).local('p').c_str());
     int lport = port2(local);
-    if(lport==0) 
-    {
-      plog("local=%d",local);
-      return -1;
-    }
     plog("connect %s to %s:%d",str(addr).c_str(),rpc.remote('h').c_str(),lport);
+    if(lport==0) return -1;
     Pub *pub = map_.create(this,fd,lport);
     return 0;
   }

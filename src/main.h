@@ -445,7 +445,7 @@ template<typename P> struct TChannel : TSocket, TSocket::Parent
       //if(errno==ENOTCONN) errno = 0;
       //if(errno==EINPROGRESS) errno = 0;
       //if(errno==ECHILD) errno = 0;
-      if(errno) plog(errno,"fd=%s",NAME(fd));
+      if(errno) dlog(errno,"fd=%s",NAME(fd));
       parent->finish(__Line__);
       return;
     }
